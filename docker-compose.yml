@@ -10,5 +10,19 @@ services:
     volumes:
       - mongodb_data_container:/data/db
 
+  vault:
+    image: vault:latest
+    volumes:
+      - vault_data_container:/vault/data
+      - vault_logs_container:/etc/vault/logs
+    ports:
+      - "8200:8200/tcp"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: 'root'
+      VAULT_DEV_LISTEN_ADDRESS: '0.0.0.0:8200'
+    entrypoint: "vault server -dev"
+
 volumes:
   mongodb_data_container:
+  vault_data_container:
+  vault_logs_container:

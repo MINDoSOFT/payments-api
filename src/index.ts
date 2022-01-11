@@ -6,6 +6,13 @@ import { EntityManager, EntityRepository, MikroORM, RequestContext } from '@mikr
 import { AuthenticateRequest, AuthenticateResponse } from './interfaces/routes/authenticate';
 import { ErrorDetail, ErrorResponse } from './interfaces/routes/error.js';
 import { User } from './entities/User.js';
+import ormOptions from './mikro-orm.config.js';
+
+import NodeVault = require ('node-vault');
+import { VaultCredsResponse } from './interfaces/VaultCredsResponse';
+
+const roleId = '083771b2-002f-5fae-e646-371a24edd710'
+const secretId = '1a402858-490b-6786-4627-550ee7d44c08'
 
 export const DI = {} as {
   orm: MikroORM,
@@ -19,9 +26,24 @@ const port = 3000;
 const ERROR_VALIDATION_CODE = 'ERR_VALIDATION';
 const ERROR_VALIDATION_MESSAGE = 'Validation failed';
 
+const vaultOptions = {
+  apiVersion: 'v1', // default
+  endpoint: 'http://127.0.0.1:8200', // default
+};
+
 (async () => {
 
-  DI.orm = await MikroORM.init();
+  // get new instance of the client
+  const vault = NodeVault(vaultOptions)
+
+  await vault.approleLogin({ role_id: roleId, secret_id: secretId })  
+
+  const mongodbCreds : VaultCredsResponse = await vault.read('mongodb/creds/payments-api-client');
+  
+  ormOptions.user = mongodbCreds.data.username;
+  ormOptions.password = mongodbCreds.data.password;
+
+  DI.orm = await MikroORM.init(ormOptions);
   DI.em = DI.orm.em;
   DI.userRepository = DI.orm.em.getRepository(User);
   

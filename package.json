@@ -9,7 +9,8 @@
     "start-dev": "npm run lint && tsc-watch --onSuccess \"node public/index.js\"",
     "seed": "npm run lint && npm run build && node public/database-seed.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "lint": "eslint src/*.ts"
+    "lint": "eslint src/*.ts",
+    "vault-check-app-role": "node vault-tests/check-app-role.js"
   },
   "repository": {
     "type": "git",
@@ -27,6 +28,7 @@
     "@mikro-orm/mongodb": "^4.5.10",
     "body-parser": "^1.19.1",
     "express": "^4.17.2",
+    "node-vault": "^0.9.22",
     "tsc-watch": "^4.6.0"
   },
   "devDependencies": {
@@ -38,10 +40,6 @@
     "typescript": "^4.5.4"
   },
   "mikro-orm": {
-    "useTsNode": true,
-    "configPaths": [
-      "./src/mikro-orm.config.ts",
-      "./public/mikro-orm.config.js"
-    ]
+    "useTsNode": true
   }
 }
