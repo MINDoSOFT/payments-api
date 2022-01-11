@@ -14,6 +14,8 @@ import { VaultCredsResponse } from './interfaces/VaultCredsResponse';
 import expressjwt = require('express-jwt');
 import jsonwebtoken = require('jsonwebtoken');
 import { isUserJWT, UserJWT } from './interfaces/UserJWT';
+import { CreatePaymentRequest, CreatePaymentResponse } from './interfaces/routes/payment';
+import { isPayment, Payment } from './entities/Payment';
 
 const roleId = '083771b2-002f-5fae-e646-371a24edd710'
 const secretId = '1a402858-490b-6786-4627-550ee7d44c08'
@@ -22,6 +24,7 @@ export const DI = {} as {
   orm: MikroORM,
   em: EntityManager,
   userRepository: EntityRepository<User>,
+  paymentRepository: EntityRepository<Payment>,
 };
 
 const app = express();
@@ -52,6 +55,7 @@ const JWT_SINGING_KEY = 'A VERY SECRET SIGNING KEY'; // TODO Put this in the vau
   DI.orm = await MikroORM.init(ormOptions);
   DI.em = DI.orm.em;
   DI.userRepository = DI.orm.em.getRepository(User);
+  DI.paymentRepository = DI.orm.em.getRepository(Payment);
   
   app.use(bodyParser.json());
   app.use((req, res, next) => RequestContext.create(DI.orm.em, next));
@@ -118,6 +122,31 @@ const JWT_SINGING_KEY = 'A VERY SECRET SIGNING KEY'; // TODO Put this in the vau
     } else {
       res.send('Something went wrong.')
     }
+  });
+
+  app.post('/v1/payments', 
+    expressjwt({ secret: JWT_SINGING_KEY, algorithms: ['HS256'] }),
+    async function (req: CreatePaymentRequest, res: CreatePaymentResponse) {
+
+      const reqPayment = new Payment(req);
+      await DI.paymentRepository.persist(reqPayment).flush();
+      const resPayment = await DI.paymentRepository.findOne({ id: reqPayment.id });
+
+      if (isPayment(resPayment)) {
+        res.json({
+          id : resPayment.id,
+          payeeId : resPayment.payeeId,
+          payerId : resPayment.payerId,
+          paymentSystem : resPayment.paymentSystem,
+          paymentMethod : resPayment.paymentMethod,
+          amount : resPayment.amount,
+          currency : resPayment.currency,
+          status : resPayment.status,
+          comment : resPayment.comment,
+          created : resPayment.createdAt.toUTCString(),
+          updated : resPayment.updatedAt.toUTCString(),
+        });
+      }
   });
   
   app.listen(port, () => {
