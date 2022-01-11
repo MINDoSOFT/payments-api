@@ -11,6 +11,10 @@ import ormOptions from './mikro-orm.config.js';
 import NodeVault = require ('node-vault');
 import { VaultCredsResponse } from './interfaces/VaultCredsResponse';
 
+import expressjwt = require('express-jwt');
+import jsonwebtoken = require('jsonwebtoken');
+import { isUserJWT, UserJWT } from './interfaces/UserJWT';
+
 const roleId = '083771b2-002f-5fae-e646-371a24edd710'
 const secretId = '1a402858-490b-6786-4627-550ee7d44c08'
 
@@ -30,6 +34,8 @@ const vaultOptions = {
   apiVersion: 'v1', // default
   endpoint: 'http://127.0.0.1:8200', // default
 };
+
+const JWT_SINGING_KEY = 'A VERY SECRET SIGNING KEY'; // TODO Put this in the vault (future todo use certificate)
 
 (async () => {
 
@@ -83,12 +89,35 @@ const vaultOptions = {
         details: [detail]
       });
     } else {
-      // TODO Create a token that is valid for some time and return it to the client
-      // TODO Persist the token in a database e.g. mongo ?
-      
+      const expiresIn = '1h'
+
+      const userJWT : UserJWT = {
+        userId : user._id.toString()
+      }
+
+      const token = await jsonwebtoken.sign(
+        userJWT, 
+        JWT_SINGING_KEY,
+        { expiresIn: expiresIn }
+      );
+      res.json({
+        authToken: token,
+        expiresIn: expiresIn
+      });
     }
       
     res.send()
+  });
+
+  app.get('/protected', 
+    expressjwt({ secret: JWT_SINGING_KEY, algorithms: ['HS256'] }),
+    (req: express.Request, res: express.Response) => {
+    const userJWT = req.user;
+    if (isUserJWT(userJWT)) {
+      res.send('Hello Protected World! ' + userJWT.userId)
+    } else {
+      res.send('Something went wrong.')
+    }
   });
   
   app.listen(port, () => {

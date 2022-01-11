@@ -1,10 +1,10 @@
 import { BaseEntity, Entity, PrimaryKey, Property } from "@mikro-orm/core";
 
 @Entity()
-export class User extends BaseEntity<User, 'id'> {
+export class User extends BaseEntity<User, '_id'> {
 
   @PrimaryKey()
-  id!: number;
+  _id!: number;
 
   @Property()
   username!: string;
