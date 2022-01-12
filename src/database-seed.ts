@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { EntityManager, EntityRepository, MikroORM, RequestContext } from '@mikro-orm/core';
+import { EntityManager, EntityRepository, MikroORM } from '@mikro-orm/core';
 import { User } from './entities/User.js';
 import NodeVault from 'node-vault';
 import { VaultCredsResponse } from './interfaces/VaultCredsResponse.js';

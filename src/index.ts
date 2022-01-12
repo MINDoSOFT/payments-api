@@ -14,7 +14,7 @@ import { VaultCredsResponse } from './interfaces/VaultCredsResponse';
 import expressjwt = require('express-jwt');
 import jsonwebtoken = require('jsonwebtoken');
 import { isUserJWT, UserJWT } from './interfaces/UserJWT';
-import { CreatePaymentRequest, CreatePaymentResponse, GetPaymentRequest, GetPaymentResponse, MapPaymentEntityToPaymentObject } from './interfaces/routes/payment';
+import { ApprovePaymentRequest, ApprovePaymentResponse, CancelPaymentRequest, CancelPaymentResponse, CreatePaymentRequest, CreatePaymentResponse, GetPaymentRequest, GetPaymentResponse, MapPaymentEntityToPaymentObject } from './interfaces/routes/payment';
 import { isPayment, Payment } from './entities/Payment';
 
 import {
@@ -26,8 +26,8 @@ import bcrypt = require('bcrypt');
 import { ValidationError } from './errors/ValidationError.js';
 import { PropertyRequiredError } from './errors/PropertyRequiredError.js';
 
-const roleId = '37a24f4d-156a-ea18-6943-d69386b6afb6' // TODO Put these in env variables
-const secretId = '9e683092-c032-0a0f-2908-016c0d3fcccf'
+const roleId = '6cfd67ad-08cb-a943-08f3-12993c25e615' // TODO Put these in env variables
+const secretId = '28930878-5b00-b4ee-2574-abfd467e39c8'
 
 export const DI = {} as {
   orm: MikroORM,
@@ -41,6 +41,14 @@ const port = 3000;
 
 const ERROR_VALIDATION_CODE = 'ERR_VALIDATION';
 const ERROR_VALIDATION_MESSAGE = 'Validation failed';
+const ERROR_CANNOT_APPROVE_CODE = 'ERR_CANNOT_APPROVE';
+const ERROR_CANNOT_APPROVE_MESSAGE = 'Cannot approve a payment that has already been cancelled';
+const ERROR_CANNOT_CANCEL_CODE = 'ERR_CANNOT_CANCEL';
+const ERROR_CANNOT_CANCEL_MESSAGE = 'Cannot cancel a payment that has already been approved';
+const ERROR_ALREADY_APPROVED_CODE = 'ERR_ALREADY_APPROVED';
+const ERROR_ALREADY_APPROVED_MESSAGE = 'This payment was already approved';
+const ERROR_ALREADY_CANCELLED_CODE = 'ERR_ALREADY_CANCELLED';
+const ERROR_ALREADY_CANCELLED_MESSAGE = 'This payment was already cancelled';
 
 const vaultOptions = {
   apiVersion: 'v1', // default
@@ -186,6 +194,78 @@ const JWT_SINGING_KEY = 'A VERY SECRET SIGNING KEY'; // TODO Put this in the vau
         if (isPayment(resPayment)) {
           const paymentObject = MapPaymentEntityToPaymentObject(resPayment);
           return res.status(StatusCodes.OK).json(paymentObject);
+        }
+      } catch (error) {
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(`Error loading payment '${paymentId}':` + error);
+      }
+
+      return res.status(StatusCodes.NOT_FOUND).send(`Payment '${paymentId}' not found.`);
+  });
+
+  app.put('/v1/payment/:id/approve', 
+    expressjwt({ secret: JWT_SINGING_KEY, algorithms: ['HS256'] }),
+    async function (req: ApprovePaymentRequest, res: ApprovePaymentResponse & ErrorResponse) {
+
+      const paymentId = req.params.id;
+
+      try {
+        const payment = await DI.paymentRepository.findOne({ _id: paymentId });
+
+        if (isPayment(payment)) {
+          if (payment.status.trim().toLowerCase() == 'cancelled') {
+            return res.status(StatusCodes.BAD_REQUEST)
+            .json({
+              code: ERROR_CANNOT_APPROVE_CODE, 
+              message: ERROR_CANNOT_APPROVE_MESSAGE
+            });
+          } else if (payment.status.trim().toLowerCase() == 'approved') {
+            return res.status(StatusCodes.BAD_REQUEST)
+            .json({
+              code: ERROR_ALREADY_APPROVED_CODE, 
+              message: ERROR_ALREADY_APPROVED_MESSAGE
+            });
+          }
+
+          payment.status = 'approved';
+
+          await DI.paymentRepository.persist(payment).flush();  
+          return res.status(StatusCodes.OK).send();
+        }
+      } catch (error) {
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(`Error loading payment '${paymentId}':` + error);
+      }
+
+      return res.status(StatusCodes.NOT_FOUND).send(`Payment '${paymentId}' not found.`);
+  });
+
+  app.put('/v1/payment/:id/cancel', 
+    expressjwt({ secret: JWT_SINGING_KEY, algorithms: ['HS256'] }),
+    async function (req: CancelPaymentRequest, res: CancelPaymentResponse & ErrorResponse) {
+
+      const paymentId = req.params.id;
+
+      try {
+        const payment = await DI.paymentRepository.findOne({ _id: paymentId });
+
+        if (isPayment(payment)) {
+          if (payment.status.trim().toLowerCase() == 'approved') {
+            return res.status(StatusCodes.BAD_REQUEST)
+            .json({
+              code: ERROR_CANNOT_CANCEL_CODE, 
+              message: ERROR_CANNOT_CANCEL_MESSAGE
+            });
+          } else if (payment.status.trim().toLowerCase() == 'cancelled') {
+            return res.status(StatusCodes.BAD_REQUEST)
+            .json({
+              code: ERROR_ALREADY_CANCELLED_CODE, 
+              message: ERROR_ALREADY_CANCELLED_MESSAGE
+            });
+          }
+
+          payment.status = 'cancelled';
+
+          await DI.paymentRepository.persist(payment).flush();  
+          return res.status(StatusCodes.OK).send();
         }
       } catch (error) {
         return res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(`Error loading payment '${paymentId}':` + error);

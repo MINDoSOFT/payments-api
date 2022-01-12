@@ -12,6 +12,14 @@ export interface GetPaymentRequest extends TypedRequestParams<{ id: string }> {}
 
 export interface GetPaymentResponse extends TypedResponseBody<PaymentObject> {}
 
+export interface ApprovePaymentRequest extends TypedRequestParams<{ id: string }> {}
+
+export interface ApprovePaymentResponse extends TypedResponseBody<{ }> {}
+
+export interface CancelPaymentRequest extends TypedRequestParams<{ id: string }> {}
+
+export interface CancelPaymentResponse extends TypedResponseBody<{ }> {}
+
 export function MapPaymentEntityToPaymentObject(payment : Payment) : PaymentObject {
     const paymentResponse = {
         id : payment._id,
