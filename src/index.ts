@@ -21,6 +21,8 @@ import {
 	StatusCodes
 } from 'http-status-codes';
 
+import bcrypt = require('bcrypt');
+
 const roleId = '37a24f4d-156a-ea18-6943-d69386b6afb6' // TODO Put these in env variables
 const secretId = '9e683092-c032-0a0f-2908-016c0d3fcccf'
 
@@ -46,7 +48,6 @@ const JWT_SINGING_KEY = 'A VERY SECRET SIGNING KEY'; // TODO Put this in the vau
 
 (async () => {
 
-  // get new instance of the client
   const vault = NodeVault(vaultOptions)
 
   await vault.approleLogin({ role_id: roleId, secret_id: secretId })  
@@ -87,7 +88,7 @@ const JWT_SINGING_KEY = 'A VERY SECRET SIGNING KEY'; // TODO Put this in the vau
     const user = await DI.userRepository.findOne({username : req.body.username});
 
     if (!user || 
-      req.body.password != user.password) {
+      !bcrypt.compareSync(req.body.password, user.password)) {
       const detail = new ErrorDetail("Wrong username or password")
   
       return res.status(StatusCodes.UNAUTHORIZED)

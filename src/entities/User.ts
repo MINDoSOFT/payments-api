@@ -1,4 +1,5 @@
 import { BaseEntity, Entity, PrimaryKey, Property } from "@mikro-orm/core";
+const bcrypt = require("bcrypt");
 
 @Entity()
 export class User extends BaseEntity<User, '_id'> {
@@ -12,9 +13,13 @@ export class User extends BaseEntity<User, '_id'> {
   @Property()
   password!: string;
 
-  constructor(username: string, password: string) {
+  constructor(username: string, plainTextPassword: string) {
     super();
     this.username = username;
-    this.password = password;
+    
+    const saltRounds = 10;
+    const salt = bcrypt.genSaltSync(saltRounds);
+    const hash = bcrypt.hashSync(plainTextPassword, salt);
+    this.password = hash;
   }
 }
