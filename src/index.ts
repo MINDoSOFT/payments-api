@@ -14,7 +14,7 @@ import { VaultCredsResponse } from './interfaces/VaultCredsResponse';
 import expressjwt = require('express-jwt');
 import jsonwebtoken = require('jsonwebtoken');
 import { isUserJWT, UserJWT } from './interfaces/UserJWT';
-import { ApprovePaymentRequest, ApprovePaymentResponse, CancelPaymentRequest, CancelPaymentResponse, CreatePaymentRequest, CreatePaymentResponse, GetPaymentRequest, GetPaymentResponse, MapPaymentEntityToPaymentObject } from './interfaces/routes/payment';
+import { ApprovePaymentRequest, ApprovePaymentResponse, CancelPaymentRequest, CancelPaymentResponse, CreatePaymentRequest, CreatePaymentResponse, GetPaymentRequest, GetPaymentResponse, ListPaymentsRequest, ListPaymentsResponse, MapPaymentEntityToPaymentObject } from './interfaces/routes/payment';
 import { isPayment, Payment } from './entities/Payment';
 
 import {
@@ -25,6 +25,7 @@ import bcrypt = require('bcrypt');
 
 import { ValidationError } from './errors/ValidationError.js';
 import { PropertyRequiredError } from './errors/PropertyRequiredError.js';
+import { PaymentObject } from './pocos/payment-object';
 
 const roleId = '6cfd67ad-08cb-a943-08f3-12993c25e615' // TODO Put these in env variables
 const secretId = '28930878-5b00-b4ee-2574-abfd467e39c8'
@@ -74,9 +75,9 @@ const JWT_SINGING_KEY = 'A VERY SECRET SIGNING KEY'; // TODO Put this in the vau
   DI.paymentRepository = DI.orm.em.getRepository(Payment);
   
   app.use(bodyParser.json());
-  app.use((req, res, next) => RequestContext.create(DI.orm.em, next));
+  app.use((_req, _res, next) => RequestContext.create(DI.orm.em, next));
   
-  app.get('/', (req: express.Request, res: express.Response) => {
+  app.get('/', (_req: express.Request, res: express.Response) => {
     return res.status(StatusCodes.OK).send('Hello World!')
   });
   
@@ -136,6 +137,23 @@ const JWT_SINGING_KEY = 'A VERY SECRET SIGNING KEY'; // TODO Put this in the vau
     } else {
       return res.status(StatusCodes.INTERNAL_SERVER_ERROR).send('Something went wrong.')
     }
+  });
+
+  app.get('/v1/payments', 
+    expressjwt({ secret: JWT_SINGING_KEY, algorithms: ['HS256'] }),
+    async function (_req: ListPaymentsRequest, res: ListPaymentsResponse) {
+
+      try {
+        const payments = await DI.paymentRepository.findAll();
+        const paymentObjects : PaymentObject[] = [];
+        payments.forEach(payment => {
+          paymentObjects.push(MapPaymentEntityToPaymentObject(payment))
+        });
+
+        return res.status(StatusCodes.OK).json(paymentObjects);
+      } catch (error) {
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(`Error loading payments:` + error);
+      }
   });
 
   app.post('/v1/payments', 

@@ -12,6 +12,10 @@ export interface GetPaymentRequest extends TypedRequestParams<{ id: string }> {}
 
 export interface GetPaymentResponse extends TypedResponseBody<PaymentObject> {}
 
+export interface ListPaymentsRequest extends TypedRequestParams<{ }> {}
+
+export interface ListPaymentsResponse extends TypedResponseBody<PaymentObject[]> {}
+
 export interface ApprovePaymentRequest extends TypedRequestParams<{ id: string }> {}
 
 export interface ApprovePaymentResponse extends TypedResponseBody<{ }> {}
