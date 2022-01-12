@@ -17,6 +17,10 @@ import { isUserJWT, UserJWT } from './interfaces/UserJWT';
 import { CreatePaymentRequest, CreatePaymentResponse, GetPaymentRequest, GetPaymentResponse, MapPaymentEntityToPaymentObject } from './interfaces/routes/payment';
 import { isPayment, Payment } from './entities/Payment';
 
+import {
+	StatusCodes
+} from 'http-status-codes';
+
 const roleId = '37a24f4d-156a-ea18-6943-d69386b6afb6' // TODO Put these in env variables
 const secretId = '9e683092-c032-0a0f-2908-016c0d3fcccf'
 
@@ -61,7 +65,7 @@ const JWT_SINGING_KEY = 'A VERY SECRET SIGNING KEY'; // TODO Put this in the vau
   app.use((req, res, next) => RequestContext.create(DI.orm.em, next));
   
   app.get('/', (req: express.Request, res: express.Response) => {
-    res.send('Hello World!')
+    return res.status(StatusCodes.OK).send('Hello World!')
   });
   
   app.post('/v1/authenticate/', async function (req: AuthenticateRequest, res: AuthenticateResponse & ErrorResponse) {
@@ -72,7 +76,7 @@ const JWT_SINGING_KEY = 'A VERY SECRET SIGNING KEY'; // TODO Put this in the vau
       req.body.password === undefined || req.body.password.trim().length === 0) {
       const detail = new ErrorDetail("Missing username and password")
   
-      res.status(401)
+      return res.status(StatusCodes.BAD_REQUEST)
       .json({
         code: ERROR_VALIDATION_CODE, 
         message: ERROR_VALIDATION_MESSAGE, 
@@ -86,7 +90,7 @@ const JWT_SINGING_KEY = 'A VERY SECRET SIGNING KEY'; // TODO Put this in the vau
       req.body.password != user.password) {
       const detail = new ErrorDetail("Wrong username or password")
   
-      res.status(401)
+      return res.status(StatusCodes.UNAUTHORIZED)
       .json({
         code: ERROR_VALIDATION_CODE, 
         message: ERROR_VALIDATION_MESSAGE, 
@@ -104,13 +108,11 @@ const JWT_SINGING_KEY = 'A VERY SECRET SIGNING KEY'; // TODO Put this in the vau
         JWT_SINGING_KEY,
         { expiresIn: expiresIn }
       );
-      res.json({
+      return res.status(StatusCodes.OK).json({
         authToken: token,
         expiresIn: expiresIn
       });
     }
-      
-    res.send()
   });
 
   app.get('/protected', 
@@ -118,9 +120,9 @@ const JWT_SINGING_KEY = 'A VERY SECRET SIGNING KEY'; // TODO Put this in the vau
     (req: express.Request, res: express.Response) => {
     const userJWT = req.user;
     if (isUserJWT(userJWT)) {
-      res.send('Hello Protected World! ' + userJWT.userId)
+      return res.status(StatusCodes.OK).send('Hello Protected World! ' + userJWT.userId)
     } else {
-      res.send('Something went wrong.')
+      return res.status(StatusCodes.INTERNAL_SERVER_ERROR).send('Something went wrong.')
     }
   });
 
@@ -129,12 +131,22 @@ const JWT_SINGING_KEY = 'A VERY SECRET SIGNING KEY'; // TODO Put this in the vau
     async function (req: CreatePaymentRequest, res: CreatePaymentResponse) {
 
       const reqPayment = new Payment(req.body);
-      await DI.paymentRepository.persist(reqPayment).flush();
-      const resPayment = await DI.paymentRepository.findOne({ _id: reqPayment._id });
 
-      if (isPayment(resPayment)) {
-        const paymentObject = MapPaymentEntityToPaymentObject(resPayment);
-        res.json(paymentObject);
+      try {
+        await DI.paymentRepository.persist(reqPayment).flush();  
+      } catch (error) {
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(`Error persisting payment:` + error);
+      }
+
+      try {
+        const resPayment = await DI.paymentRepository.findOne({ _id: reqPayment._id });
+
+        if (isPayment(resPayment)) {
+          const paymentObject = MapPaymentEntityToPaymentObject(resPayment);
+          return res.status(StatusCodes.OK).json(paymentObject);
+        }        
+      } catch (error) {
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(`Error retrieving created payment:` + error);
       }
   });
 
@@ -144,18 +156,22 @@ const JWT_SINGING_KEY = 'A VERY SECRET SIGNING KEY'; // TODO Put this in the vau
 
       const paymentId = req.params.id;
 
-      const resPayment = await DI.paymentRepository.findOne({ _id: paymentId });
+      try {
+        const resPayment = await DI.paymentRepository.findOne({ _id: paymentId });
 
-      if (isPayment(resPayment)) {
-        const paymentObject = MapPaymentEntityToPaymentObject(resPayment);
-        res.json(paymentObject);
+        if (isPayment(resPayment)) {
+          const paymentObject = MapPaymentEntityToPaymentObject(resPayment);
+          return res.status(StatusCodes.OK).json(paymentObject);
+        }
+      } catch (error) {
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(`Error loading payment '${paymentId}':` + error);
       }
 
-      res.send(`Payment '${paymentId}' not found.`);
+      return res.status(StatusCodes.NOT_FOUND).send(`Payment '${paymentId}' not found.`);
   });
   
   app.listen(port, () => {
-    console.log(`Example app listening on port ${port}!`)
+    console.log(`Payments-api listening on port ${port}!`)
   });
 
 })();
