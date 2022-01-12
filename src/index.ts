@@ -26,6 +26,8 @@ import bcrypt = require('bcrypt');
 import { ValidationError } from './errors/ValidationError.js';
 import { PropertyRequiredError } from './errors/PropertyRequiredError.js';
 import { PaymentObject } from './pocos/payment-object';
+import { UnauthorizedError } from 'express-jwt';
+import { TokenExpiredError } from 'jsonwebtoken';
 
 const roleId = '6cfd67ad-08cb-a943-08f3-12993c25e615' // TODO Put these in env variables
 const secretId = '28930878-5b00-b4ee-2574-abfd467e39c8'
@@ -40,6 +42,10 @@ export const DI = {} as {
 const app = express();
 const port = 3000;
 
+const ERROR_UNAUTHORIZED_CODE = 'ERR_UNAUTHORIZED';
+const ERROR_UNAUTHORIZED_MESSAGE = 'No auth token provided';
+const ERROR_AUTH_TOKEN_EXPIRED_CODE = 'ERR_AUTH_TOKEN_EXPIRED';
+const ERROR_AUTH_TOKEN_EXPIRED_MESSAGE = 'Auth token expired';
 const ERROR_VALIDATION_CODE = 'ERR_VALIDATION';
 const ERROR_VALIDATION_MESSAGE = 'Validation failed';
 const ERROR_CANNOT_APPROVE_CODE = 'ERR_CANNOT_APPROVE';
@@ -76,7 +82,7 @@ const JWT_SINGING_KEY = 'A VERY SECRET SIGNING KEY'; // TODO Put this in the vau
   
   app.use(bodyParser.json());
   app.use((_req, _res, next) => RequestContext.create(DI.orm.em, next));
-  
+
   app.get('/', (_req: express.Request, res: express.Response) => {
     return res.status(StatusCodes.OK).send('Hello World!')
   });
@@ -292,6 +298,28 @@ const JWT_SINGING_KEY = 'A VERY SECRET SIGNING KEY'; // TODO Put this in the vau
       return res.status(StatusCodes.NOT_FOUND).send(`Payment '${paymentId}' not found.`);
   });
   
+  app.use(function (err: Error, req: express.Request, res: express.Response, next: express.NextFunction) {
+    // This must come after any routes, otherwise it is not called !
+    if (err instanceof UnauthorizedError) {
+
+      if (err.inner && err.inner instanceof TokenExpiredError) {
+        return res.status(StatusCodes.UNAUTHORIZED)
+          .json({
+          code: ERROR_AUTH_TOKEN_EXPIRED_CODE,
+          message: ERROR_AUTH_TOKEN_EXPIRED_MESSAGE
+        });
+      }
+
+      return res.status(StatusCodes.UNAUTHORIZED)
+        .json({
+        code: ERROR_UNAUTHORIZED_CODE,
+        message: ERROR_UNAUTHORIZED_MESSAGE
+      });
+    }
+
+    next();
+  })
+
   app.listen(port, () => {
     console.log(`Payments-api listening on port ${port}!`)
   });
