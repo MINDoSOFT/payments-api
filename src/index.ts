@@ -14,11 +14,11 @@ import { VaultCredsResponse } from './interfaces/VaultCredsResponse';
 import expressjwt = require('express-jwt');
 import jsonwebtoken = require('jsonwebtoken');
 import { isUserJWT, UserJWT } from './interfaces/UserJWT';
-import { CreatePaymentRequest, CreatePaymentResponse } from './interfaces/routes/payment';
+import { CreatePaymentRequest, CreatePaymentResponse, GetPaymentRequest, GetPaymentResponse, MapPaymentEntityToPaymentObject } from './interfaces/routes/payment';
 import { isPayment, Payment } from './entities/Payment';
 
-const roleId = '083771b2-002f-5fae-e646-371a24edd710'
-const secretId = '1a402858-490b-6786-4627-550ee7d44c08'
+const roleId = '37a24f4d-156a-ea18-6943-d69386b6afb6' // TODO Put these in env variables
+const secretId = '9e683092-c032-0a0f-2908-016c0d3fcccf'
 
 export const DI = {} as {
   orm: MikroORM,
@@ -128,25 +128,30 @@ const JWT_SINGING_KEY = 'A VERY SECRET SIGNING KEY'; // TODO Put this in the vau
     expressjwt({ secret: JWT_SINGING_KEY, algorithms: ['HS256'] }),
     async function (req: CreatePaymentRequest, res: CreatePaymentResponse) {
 
-      const reqPayment = new Payment(req);
+      const reqPayment = new Payment(req.body);
       await DI.paymentRepository.persist(reqPayment).flush();
-      const resPayment = await DI.paymentRepository.findOne({ id: reqPayment.id });
+      const resPayment = await DI.paymentRepository.findOne({ _id: reqPayment._id });
 
       if (isPayment(resPayment)) {
-        res.json({
-          id : resPayment.id,
-          payeeId : resPayment.payeeId,
-          payerId : resPayment.payerId,
-          paymentSystem : resPayment.paymentSystem,
-          paymentMethod : resPayment.paymentMethod,
-          amount : resPayment.amount,
-          currency : resPayment.currency,
-          status : resPayment.status,
-          comment : resPayment.comment,
-          created : resPayment.createdAt.toUTCString(),
-          updated : resPayment.updatedAt.toUTCString(),
-        });
+        const paymentObject = MapPaymentEntityToPaymentObject(resPayment);
+        res.json(paymentObject);
       }
+  });
+
+  app.get('/v1/payment/:id', 
+    expressjwt({ secret: JWT_SINGING_KEY, algorithms: ['HS256'] }),
+    async function (req: GetPaymentRequest, res: GetPaymentResponse) {
+
+      const paymentId = req.params.id;
+
+      const resPayment = await DI.paymentRepository.findOne({ _id: paymentId });
+
+      if (isPayment(resPayment)) {
+        const paymentObject = MapPaymentEntityToPaymentObject(resPayment);
+        res.json(paymentObject);
+      }
+
+      res.send(`Payment '${paymentId}' not found.`);
   });
   
   app.listen(port, () => {

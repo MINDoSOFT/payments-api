@@ -1,4 +1,4 @@
-import { ConstraintViolationException, Options } from '@mikro-orm/core';
+import { Options } from '@mikro-orm/core';
 import { MongoHighlighter } from '@mikro-orm/mongo-highlighter';
 import { User } from './entities/User';
 import { Payment } from './entities/Payment';

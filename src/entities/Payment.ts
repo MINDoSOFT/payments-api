@@ -1,12 +1,12 @@
 import { BaseEntity, Entity, PrimaryKey, Property } from "@mikro-orm/core";
 import { v4 } from 'uuid';
-import { CreatePaymentRequest } from "../interfaces/routes/payment";
+import { CreatePaymentObject } from "../pocos/payment-object";
 
 @Entity()
-export class Payment extends BaseEntity<Payment, 'id'> {
+export class Payment extends BaseEntity<Payment, '_id'> {
 
     @PrimaryKey()
-    id: string = v4();
+    _id: string = v4();
   
     @Property()
     payeeId: string;
@@ -38,18 +38,18 @@ export class Payment extends BaseEntity<Payment, 'id'> {
     @Property({ onUpdate: () => new Date() })
     updatedAt: Date = new Date();
 
-  constructor(payment: CreatePaymentRequest) {
+  constructor(payment: CreatePaymentObject) {
     super();
-    this.payeeId = payment.body.payeeId;
-    this.payerId = payment.body.payerId;
-    this.paymentSystem = payment.body.paymentSystem;
-    this.paymentMethod = payment.body.paymentMethod;
-    this.amount = payment.body.amount;
-    this.currency = payment.body.currency;
-    this.comment = payment.body.comment;
+    this.payeeId = payment.payeeId;
+    this.payerId = payment.payerId;
+    this.paymentSystem = payment.paymentSystem;
+    this.paymentMethod = payment.paymentMethod;
+    this.amount = payment.amount;
+    this.currency = payment.currency;
+    this.comment = payment.comment;
   }
 }
 
 export function isPayment(arg: any): arg is Payment {
-    return arg.id !== undefined;
+    return arg && arg.id;
 }

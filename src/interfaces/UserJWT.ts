@@ -3,5 +3,5 @@ export interface UserJWT extends Express.User {
 }
 
 export function isUserJWT(arg: any): arg is UserJWT {
-    return arg.userId !== undefined;
+    return arg.userId;
 }
