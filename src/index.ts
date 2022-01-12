@@ -23,6 +23,9 @@ import {
 
 import bcrypt = require('bcrypt');
 
+import { ValidationError } from './errors/ValidationError.js';
+import { PropertyRequiredError } from './errors/PropertyRequiredError.js';
+
 const roleId = '37a24f4d-156a-ea18-6943-d69386b6afb6' // TODO Put these in env variables
 const secretId = '9e683092-c032-0a0f-2908-016c0d3fcccf'
 
@@ -129,18 +132,38 @@ const JWT_SINGING_KEY = 'A VERY SECRET SIGNING KEY'; // TODO Put this in the vau
 
   app.post('/v1/payments', 
     expressjwt({ secret: JWT_SINGING_KEY, algorithms: ['HS256'] }),
-    async function (req: CreatePaymentRequest, res: CreatePaymentResponse) {
+    async function (req: CreatePaymentRequest, res: CreatePaymentResponse & ErrorResponse) {
 
-      const reqPayment = new Payment(req.body);
+      let reqPaymentId : string;
 
       try {
+        const reqPayment = new Payment(req.body);
+        reqPaymentId = reqPayment._id;
+
         await DI.paymentRepository.persist(reqPayment).flush();  
       } catch (error) {
-        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(`Error persisting payment:` + error);
+        if (error instanceof ValidationError) {
+
+          let detail = new ErrorDetail(error.message)
+
+          if (error instanceof PropertyRequiredError) {
+            detail = new ErrorDetail(error.message, [error.property], undefined)
+          }
+
+          return res.status(StatusCodes.BAD_REQUEST)
+          .json({
+            code: ERROR_VALIDATION_CODE, 
+            message: ERROR_VALIDATION_MESSAGE, 
+            details: [detail]
+          });
+        }
+        else {
+          return res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(`Error persisting payment:` + error);
+        }
       }
 
       try {
-        const resPayment = await DI.paymentRepository.findOne({ _id: reqPayment._id });
+        const resPayment = await DI.paymentRepository.findOne({ _id: reqPaymentId });
 
         if (isPayment(resPayment)) {
           const paymentObject = MapPaymentEntityToPaymentObject(resPayment);
