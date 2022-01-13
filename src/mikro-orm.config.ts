@@ -11,6 +11,7 @@ const ormOptions: Options = {
   debug: true,
   user: 'an-invalid-user',
   password: 'an-invalid-password',
+  clientUrl: 'mongodb://mongodb_container:27017'
 };
 
 export default ormOptions;

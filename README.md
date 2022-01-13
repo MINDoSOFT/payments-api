@@ -1,3 +1,9 @@
+# Introduction
+
+This project uses a Node container which runs an express api that handles payment operations (list, create, get, approve, cancel).
+The Node container connects to the MongoDB by retrieving a dynamic username and password from Vault.
+MongoDB and Vault run on their own separate containers.
+
 ## To add the user please run:
 ```bash
 npm run seed

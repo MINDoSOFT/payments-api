@@ -29,8 +29,10 @@ import { TokenExpiredError } from 'jsonwebtoken';
 import { ZodError } from 'zod';
 import { ERROR_VALIDATION_CODE, ERROR_VALIDATION_MESSAGE, ERROR_CANNOT_APPROVE_CODE, ERROR_CANNOT_APPROVE_MESSAGE, ERROR_ALREADY_APPROVED_CODE, ERROR_ALREADY_APPROVED_MESSAGE, ERROR_CANNOT_CANCEL_CODE, ERROR_CANNOT_CANCEL_MESSAGE, ERROR_ALREADY_CANCELLED_CODE, ERROR_ALREADY_CANCELLED_MESSAGE, ERROR_AUTH_TOKEN_EXPIRED_CODE, ERROR_AUTH_TOKEN_EXPIRED_MESSAGE, ERROR_UNAUTHORIZED_CODE, ERROR_UNAUTHORIZED_MESSAGE } from './enums/api-error-codes';
 
-const roleId = '5174662e-0e80-b298-d55d-6e17b6c4bc81' // TODO Put these in env variables
-const secretId = 'c56ddff8-4316-bfac-9741-9eedfad26ded'
+import { readFileSync } from 'fs';
+
+const roleId = readFileSync('./vault-data/payments-api-role_id', 'utf8')
+const secretId = readFileSync('./vault-data/payments-api-secret_id', 'utf8')
 
 export const DI = {} as {
   orm: MikroORM,
@@ -44,7 +46,7 @@ const port = 3000;
 
 const vaultOptions = {
   apiVersion: 'v1', // default
-  endpoint: 'http://127.0.0.1:8200', // default
+  endpoint: 'http://vault:8200', // default
 };
 
 const JWT_SINGING_KEY = 'A VERY SECRET SIGNING KEY'; // TODO Put this in the vault (future todo use certificate)

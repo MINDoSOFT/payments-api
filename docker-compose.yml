@@ -1,5 +1,13 @@
 version: '3.7'
 services:
+  payments-api:
+    build: ./
+    ports:
+      - 3000:3000
+    depends_on:
+      - mongodb_container
+      - vault
+
   mongodb_container:
     image: mongo:latest
     environment:
@@ -21,6 +29,8 @@ services:
       VAULT_DEV_ROOT_TOKEN_ID: 'root'
       VAULT_DEV_LISTEN_ADDRESS: '0.0.0.0:8200'
     entrypoint: "vault server -dev"
+    depends_on:
+      - mongodb_container
 
 volumes:
   mongodb_data_container:
