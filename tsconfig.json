@@ -1,6 +1,7 @@
 {
   "extends": "./node_modules/gts/tsconfig-google.json",
   "compilerOptions": {
+    "strict": true,
     "rootDir": "./src",
     "outDir": "./public",
     "experimentalDecorators": true,                   /* Enable experimental support for TC39 stage 2 draft decorators. */

@@ -18,3 +18,10 @@ export const PaymentSchema = CreatePaymentSchema.extend({
     created: z.date(),
     updated: z.date(),
 })
+
+export const GetPaymentSchema = z.object({
+    id: z.string().uuid(),
+})
+
+export const ApprovePaymentSchema = GetPaymentSchema
+export const CancelPaymentSchema = GetPaymentSchema

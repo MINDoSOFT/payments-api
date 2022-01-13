@@ -30,6 +30,7 @@ import { ZodError } from 'zod';
 import { ERROR_VALIDATION_CODE, ERROR_VALIDATION_MESSAGE, ERROR_CANNOT_APPROVE_CODE, ERROR_CANNOT_APPROVE_MESSAGE, ERROR_ALREADY_APPROVED_CODE, ERROR_ALREADY_APPROVED_MESSAGE, ERROR_CANNOT_CANCEL_CODE, ERROR_CANNOT_CANCEL_MESSAGE, ERROR_ALREADY_CANCELLED_CODE, ERROR_ALREADY_CANCELLED_MESSAGE, ERROR_AUTH_TOKEN_EXPIRED_CODE, ERROR_AUTH_TOKEN_EXPIRED_MESSAGE, ERROR_UNAUTHORIZED_CODE, ERROR_UNAUTHORIZED_MESSAGE } from './enums/api-error-codes';
 
 import { readFileSync } from 'fs';
+import { ApprovePaymentSchema, CancelPaymentSchema, GetPaymentSchema } from './schemas/payment-schema';
 
 const roleId = readFileSync('./vault-data/payments-api-role_id', 'utf8')
 const secretId = readFileSync('./vault-data/payments-api-secret_id', 'utf8')
@@ -196,7 +197,28 @@ const JWT_SINGING_KEY = 'A VERY SECRET SIGNING KEY'; // TODO Put this in the vau
 
   app.get('/v1/payment/:id', 
     expressjwt({ secret: JWT_SINGING_KEY, algorithms: ['HS256'] }),
-    async function (req: GetPaymentRequest, res: GetPaymentResponse) {
+    async function (req: GetPaymentRequest, res: GetPaymentResponse & ErrorResponse) {
+
+      try {
+        GetPaymentSchema.parse(req.params);
+      } catch (error) {
+        if (error instanceof ZodError) {
+
+          const details : ErrorDetail[] = [];
+          error.issues.forEach(issue => {
+            details.push(new ErrorDetail(issue.message, issue.path))
+          });
+
+          return res.status(StatusCodes.BAD_REQUEST)
+          .json({
+            code: ERROR_VALIDATION_CODE, 
+            message: ERROR_VALIDATION_MESSAGE, 
+            details: details
+          });
+        } else {
+          return res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(`Error parsing get payment request parameters:` + error);
+        }
+      }
 
       const paymentId = req.params.id;
 
@@ -217,6 +239,27 @@ const JWT_SINGING_KEY = 'A VERY SECRET SIGNING KEY'; // TODO Put this in the vau
   app.put('/v1/payment/:id/approve', 
     expressjwt({ secret: JWT_SINGING_KEY, algorithms: ['HS256'] }),
     async function (req: ApprovePaymentRequest, res: ApprovePaymentResponse & ErrorResponse) {
+
+      try {
+        ApprovePaymentSchema.parse(req.params);
+      } catch (error) {
+        if (error instanceof ZodError) {
+
+          const details : ErrorDetail[] = [];
+          error.issues.forEach(issue => {
+            details.push(new ErrorDetail(issue.message, issue.path))
+          });
+
+          return res.status(StatusCodes.BAD_REQUEST)
+          .json({
+            code: ERROR_VALIDATION_CODE, 
+            message: ERROR_VALIDATION_MESSAGE, 
+            details: details
+          });
+        } else {
+          return res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(`Error parsing approve payment request parameters:` + error);
+        }
+      }
 
       const paymentId = req.params.id;
 
@@ -253,6 +296,27 @@ const JWT_SINGING_KEY = 'A VERY SECRET SIGNING KEY'; // TODO Put this in the vau
   app.put('/v1/payment/:id/cancel', 
     expressjwt({ secret: JWT_SINGING_KEY, algorithms: ['HS256'] }),
     async function (req: CancelPaymentRequest, res: CancelPaymentResponse & ErrorResponse) {
+
+      try {
+        CancelPaymentSchema.parse(req.params);
+      } catch (error) {
+        if (error instanceof ZodError) {
+
+          const details : ErrorDetail[] = [];
+          error.issues.forEach(issue => {
+            details.push(new ErrorDetail(issue.message, issue.path))
+          });
+
+          return res.status(StatusCodes.BAD_REQUEST)
+          .json({
+            code: ERROR_VALIDATION_CODE, 
+            message: ERROR_VALIDATION_MESSAGE, 
+            details: details
+          });
+        } else {
+          return res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(`Error parsing cancel payment request parameters:` + error);
+        }
+      }
 
       const paymentId = req.params.id;
 
