@@ -3,14 +3,15 @@ var options = {
     endpoint: 'http://127.0.0.1:8200', // default
   };
   
+import NodeVault from 'node-vault';
 // get new instance of the client
-var vault = require("node-vault")()
+const vault = NodeVault(options)
 
-const fs = require('fs')
+import { readFileSync } from 'fs';
 
 try {
-  const roleId = fs.readFileSync('./vault-data/payments-api-role_id', 'utf8')
-  const secretId = fs.readFileSync('./vault-data/payments-api-secret_id', 'utf8')
+  const roleId = readFileSync('./vault-data/payments-api-role_id', 'utf8')
+  const secretId = readFileSync('./vault-data/payments-api-secret_id', 'utf8')
 
   vault.approleLogin({ role_id: roleId, secret_id: secretId })
   .then(() => {

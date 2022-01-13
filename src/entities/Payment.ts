@@ -1,7 +1,7 @@
 import { BaseEntity, Entity, PrimaryKey, Property } from "@mikro-orm/core";
 import { v4 } from 'uuid';
 import { CreatePaymentObject } from "../pocos/payment-object";
-import { CreatePaymentSchema } from "../schemas/payment-schema";
+import { CreatePaymentSchema, PaymentStatusEnum } from "../schemas/payment-schema";
 
 @Entity()
 export class Payment extends BaseEntity<Payment, '_id'> {
@@ -31,7 +31,7 @@ export class Payment extends BaseEntity<Payment, '_id'> {
     comment: string;
 
     @Property()
-    status: string = 'created';
+    status: string = PaymentStatusEnum.enum.created;
 
     @Property()
     createdAt: Date = new Date();

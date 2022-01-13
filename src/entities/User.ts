@@ -1,5 +1,5 @@
 import { BaseEntity, Entity, PrimaryKey, Property } from "@mikro-orm/core";
-const bcrypt = require("bcrypt");
+import bcrypt = require("bcrypt");
 
 @Entity()
 export class User extends BaseEntity<User, '_id'> {

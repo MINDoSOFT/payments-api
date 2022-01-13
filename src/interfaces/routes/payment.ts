@@ -5,25 +5,20 @@ import { TypedRequestBody } from "../TypedRequestBody";
 import { TypedRequestParams } from "../TypedRequestParams";
 import { TypedResponseBody } from "../TypedResponseBody";
 
-export interface CreatePaymentRequest extends TypedRequestBody<CreatePaymentObject> {}
+export type CreatePaymentRequest = TypedRequestBody<CreatePaymentObject>
+export type CreatePaymentResponse = GetPaymentResponse
 
-export interface CreatePaymentResponse extends GetPaymentResponse {}
+export type GetPaymentRequest = TypedRequestParams<{ id: string }>
+export type GetPaymentResponse = TypedResponseBody<PaymentObject>
 
-export interface GetPaymentRequest extends TypedRequestParams<{ id: string }> {}
+export type ListPaymentsRequest = TypedRequestParams<Record<string, never>>
+export type ListPaymentsResponse = TypedResponseBody<PaymentObject[]>
 
-export interface GetPaymentResponse extends TypedResponseBody<PaymentObject> {}
+export type ApprovePaymentRequest = TypedRequestParams<{ id: string }>
+export type ApprovePaymentResponse = TypedResponseBody<Record<string, never>>
 
-export interface ListPaymentsRequest extends TypedRequestParams<{ }> {}
-
-export interface ListPaymentsResponse extends TypedResponseBody<PaymentObject[]> {}
-
-export interface ApprovePaymentRequest extends TypedRequestParams<{ id: string }> {}
-
-export interface ApprovePaymentResponse extends TypedResponseBody<{ }> {}
-
-export interface CancelPaymentRequest extends TypedRequestParams<{ id: string }> {}
-
-export interface CancelPaymentResponse extends TypedResponseBody<{ }> {}
+export type CancelPaymentRequest = TypedRequestParams<{ id: string }>
+export type CancelPaymentResponse = TypedResponseBody<Record<string, never>>
 
 export function MapPaymentEntityToPaymentObject(payment : Payment) : PaymentObject {
     const paymentResponse = {

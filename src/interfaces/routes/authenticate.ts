@@ -1,12 +1,14 @@
 import { TypedRequestBody } from "../TypedRequestBody";
 import { TypedResponseBody } from "../TypedResponseBody";
 
-export interface AuthenticateRequest extends TypedRequestBody<{
+// tslint:disable-next-line:no-empty-interface
+export type AuthenticateRequest = TypedRequestBody<{
     username: string,
     password: string
-}> {}
+}>
 
-export interface AuthenticateResponse extends TypedResponseBody<{
+// tslint:disable-next-line:no-empty-interface
+export type AuthenticateResponse = TypedResponseBody<{
     authToken: string,
     expiresIn: string
-}> {}
+}>

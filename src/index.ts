@@ -27,6 +27,7 @@ import { PaymentObject } from './pocos/payment-object';
 import { UnauthorizedError } from 'express-jwt';
 import { TokenExpiredError } from 'jsonwebtoken';
 import { ZodError } from 'zod';
+import { ERROR_VALIDATION_CODE, ERROR_VALIDATION_MESSAGE, ERROR_CANNOT_APPROVE_CODE, ERROR_CANNOT_APPROVE_MESSAGE, ERROR_ALREADY_APPROVED_CODE, ERROR_ALREADY_APPROVED_MESSAGE, ERROR_CANNOT_CANCEL_CODE, ERROR_CANNOT_CANCEL_MESSAGE, ERROR_ALREADY_CANCELLED_CODE, ERROR_ALREADY_CANCELLED_MESSAGE, ERROR_AUTH_TOKEN_EXPIRED_CODE, ERROR_AUTH_TOKEN_EXPIRED_MESSAGE, ERROR_UNAUTHORIZED_CODE, ERROR_UNAUTHORIZED_MESSAGE } from './enums/api-error-codes';
 
 const roleId = '5174662e-0e80-b298-d55d-6e17b6c4bc81' // TODO Put these in env variables
 const secretId = 'c56ddff8-4316-bfac-9741-9eedfad26ded'
@@ -40,21 +41,6 @@ export const DI = {} as {
 
 const app = express();
 const port = 3000;
-
-const ERROR_UNAUTHORIZED_CODE = 'ERR_UNAUTHORIZED';
-const ERROR_UNAUTHORIZED_MESSAGE = 'No auth token provided';
-const ERROR_AUTH_TOKEN_EXPIRED_CODE = 'ERR_AUTH_TOKEN_EXPIRED';
-const ERROR_AUTH_TOKEN_EXPIRED_MESSAGE = 'Auth token expired';
-const ERROR_VALIDATION_CODE = 'ERR_VALIDATION';
-const ERROR_VALIDATION_MESSAGE = 'Validation failed';
-const ERROR_CANNOT_APPROVE_CODE = 'ERR_CANNOT_APPROVE';
-const ERROR_CANNOT_APPROVE_MESSAGE = 'Cannot approve a payment that has already been cancelled';
-const ERROR_CANNOT_CANCEL_CODE = 'ERR_CANNOT_CANCEL';
-const ERROR_CANNOT_CANCEL_MESSAGE = 'Cannot cancel a payment that has already been approved';
-const ERROR_ALREADY_APPROVED_CODE = 'ERR_ALREADY_APPROVED';
-const ERROR_ALREADY_APPROVED_MESSAGE = 'This payment was already approved';
-const ERROR_ALREADY_CANCELLED_CODE = 'ERR_ALREADY_CANCELLED';
-const ERROR_ALREADY_CANCELLED_MESSAGE = 'This payment was already cancelled';
 
 const vaultOptions = {
   apiVersion: 'v1', // default
@@ -198,7 +184,9 @@ const JWT_SINGING_KEY = 'A VERY SECRET SIGNING KEY'; // TODO Put this in the vau
         if (isPayment(resPayment)) {
           const paymentObject = MapPaymentEntityToPaymentObject(resPayment);
           return res.status(StatusCodes.CREATED).json(paymentObject);
-        }        
+        } else {
+          return res.status(StatusCodes.INTERNAL_SERVER_ERROR).send('Something went wrong.')
+        }
       } catch (error) {
         return res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(`Error retrieving created payment:` + error);
       }
@@ -315,7 +303,7 @@ const JWT_SINGING_KEY = 'A VERY SECRET SIGNING KEY'; // TODO Put this in the vau
       });
     }
 
-    next();
+    return next();
   })
 
   app.listen(port, () => {
