@@ -1,7 +1,7 @@
 import { BaseEntity, Entity, PrimaryKey, Property } from "@mikro-orm/core";
 import { v4 } from 'uuid';
-import { PropertyRequiredError } from "../errors/PropertyRequiredError";
 import { CreatePaymentObject } from "../pocos/payment-object";
+import { CreatePaymentSchema } from "../schemas/payment-schema";
 
 @Entity()
 export class Payment extends BaseEntity<Payment, '_id'> {
@@ -44,15 +44,7 @@ export class Payment extends BaseEntity<Payment, '_id'> {
 
     if (!payment) throw Error("Missing payment")
 
-    // TODO Use reflection to loop through required properties
-
-    if (!payment.payeeId || payment.payeeId.trim().length == 0) throw new PropertyRequiredError("payeeId")
-    if (!payment.payerId || payment.payeeId.trim().length == 0) throw new PropertyRequiredError("payerId")
-    if (!payment.paymentSystem || payment.payeeId.trim().length == 0) throw new PropertyRequiredError("paymentSystem")
-    if (!payment.paymentMethod || payment.payeeId.trim().length == 0) throw new PropertyRequiredError("paymentMethod")
-    if (!payment.amount) throw new PropertyRequiredError("amount")
-    if (!payment.currency || payment.payeeId.trim().length == 0) throw new PropertyRequiredError("currency")
-    if (!payment.comment || payment.payeeId.trim().length == 0) throw new PropertyRequiredError("comment")
+    CreatePaymentSchema.parse(payment)
 
     this.payeeId = payment.payeeId;
     this.payerId = payment.payerId;

@@ -23,14 +23,13 @@ import {
 
 import bcrypt = require('bcrypt');
 
-import { ValidationError } from './errors/ValidationError.js';
-import { PropertyRequiredError } from './errors/PropertyRequiredError.js';
 import { PaymentObject } from './pocos/payment-object';
 import { UnauthorizedError } from 'express-jwt';
 import { TokenExpiredError } from 'jsonwebtoken';
+import { ZodError } from 'zod';
 
-const roleId = '6cfd67ad-08cb-a943-08f3-12993c25e615' // TODO Put these in env variables
-const secretId = '28930878-5b00-b4ee-2574-abfd467e39c8'
+const roleId = '5174662e-0e80-b298-d55d-6e17b6c4bc81' // TODO Put these in env variables
+const secretId = 'c56ddff8-4316-bfac-9741-9eedfad26ded'
 
 export const DI = {} as {
   orm: MikroORM,
@@ -174,19 +173,18 @@ const JWT_SINGING_KEY = 'A VERY SECRET SIGNING KEY'; // TODO Put this in the vau
 
         await DI.paymentRepository.persist(reqPayment).flush();  
       } catch (error) {
-        if (error instanceof ValidationError) {
+        if (error instanceof ZodError) {
 
-          let detail = new ErrorDetail(error.message)
-
-          if (error instanceof PropertyRequiredError) {
-            detail = new ErrorDetail(error.message, [error.property], undefined)
-          }
+          const details : ErrorDetail[] = [];
+          error.issues.forEach(issue => {
+            details.push(new ErrorDetail(issue.message, issue.path))
+          });
 
           return res.status(StatusCodes.BAD_REQUEST)
           .json({
             code: ERROR_VALIDATION_CODE, 
             message: ERROR_VALIDATION_MESSAGE, 
-            details: [detail]
+            details: details
           });
         }
         else {
@@ -199,7 +197,7 @@ const JWT_SINGING_KEY = 'A VERY SECRET SIGNING KEY'; // TODO Put this in the vau
 
         if (isPayment(resPayment)) {
           const paymentObject = MapPaymentEntityToPaymentObject(resPayment);
-          return res.status(StatusCodes.OK).json(paymentObject);
+          return res.status(StatusCodes.CREATED).json(paymentObject);
         }        
       } catch (error) {
         return res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(`Error retrieving created payment:` + error);

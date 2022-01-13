@@ -1,5 +1,6 @@
 import { Payment } from "../../entities/Payment";
 import { CreatePaymentObject, PaymentObject } from "../../pocos/payment-object";
+import { PaymentSchema } from "../../schemas/payment-schema";
 import { TypedRequestBody } from "../TypedRequestBody";
 import { TypedRequestParams } from "../TypedRequestParams";
 import { TypedResponseBody } from "../TypedResponseBody";
@@ -35,8 +36,11 @@ export function MapPaymentEntityToPaymentObject(payment : Payment) : PaymentObje
         currency : payment.currency,
         status : payment.status,
         comment : payment.comment,
-        created : payment.createdAt.toUTCString(),
-        updated : payment.updatedAt.toUTCString(),
+        created : payment.createdAt,
+        updated : payment.updatedAt,
       };
+
+    PaymentSchema.parse(paymentResponse);
+
     return paymentResponse;
 }

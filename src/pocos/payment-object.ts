@@ -5,12 +5,12 @@ export interface CreatePaymentObject {
     paymentMethod: string,
     amount: number,
     currency: string,
-    status: string,
     comment: string,
 }
 
 export interface PaymentObject extends CreatePaymentObject {
     id: string,
-    created: string,
-    updated: string,    
+    status: string,
+    created: Date,
+    updated: Date,    
 }
