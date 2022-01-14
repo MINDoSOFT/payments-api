@@ -5,8 +5,10 @@ import NodeVault from 'node-vault';
 import { VaultCredsResponse } from './interfaces/VaultCredsResponse.js';
 import ormOptions from './mikro-orm.config.js';
 
-const roleId = '37a24f4d-156a-ea18-6943-d69386b6afb6'; // TODO Put these in env variables
-const secretId = '9e683092-c032-0a0f-2908-016c0d3fcccf';
+import { readFileSync } from 'fs';
+
+const roleId = readFileSync('./vault-data/payments-api-role_id', 'utf8')
+const secretId = readFileSync('./vault-data/payments-api-secret_id', 'utf8')
 
 export const DI = {} as {
   orm: MikroORM;

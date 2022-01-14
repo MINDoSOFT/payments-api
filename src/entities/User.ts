@@ -4,7 +4,7 @@ import bcrypt = require('bcrypt');
 @Entity()
 export class User extends BaseEntity<User, '_id'> {
   @PrimaryKey()
-  _id!: number;
+  _id!: string;
 
   @Property()
   username!: string;
