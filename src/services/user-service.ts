@@ -1,7 +1,16 @@
 import { EntityRepository } from '@mikro-orm/core';
 import { User } from '../entities/User';
 import bcrypt = require('bcrypt');
-import { UserNotFoundError, UserPasswordInvalidError } from '../errors/user-service-error';
+import {
+  UserNotFoundError,
+  UserPasswordInvalidError
+} from '../errors/user-service-error';
+import {
+  getUserInput,
+  getUserOutput,
+  validateUserPasswordInput,
+  validateUserPasswordOutput
+} from '../interfaces/services/user-service-interface';
 
 export class UserService {
   private userRepository: EntityRepository<User>;
@@ -10,23 +19,25 @@ export class UserService {
     this.userRepository = userRepository;
   }
 
-  getUser = async (username: string) => {
-    const user = await this.userRepository.findOne({ username: username });
+  getUser = async (input: getUserInput): Promise<getUserOutput> => {
+    const user = await this.userRepository.findOne({
+      username: input.username
+    });
 
-    if (!user) throw new UserNotFoundError(username);
+    if (!user) throw new UserNotFoundError(input.username);
 
-    return user;
+    return { user };
   };
 
   validateUserPassword = async (
-    username: string,
-    plainTextPassword: string
-  ) => {
-    const user = await this.getUser(username);
+    input: validateUserPasswordInput
+  ): Promise<validateUserPasswordOutput> => {
+    const getUserOutput = await this.getUser({ username: input.username });
+    const user = getUserOutput.user;
 
-    if (!bcrypt.compareSync(plainTextPassword, user.password))
-      throw new UserPasswordInvalidError(username);
+    if (!bcrypt.compareSync(input.plainTextPassword, user.password))
+      throw new UserPasswordInvalidError(input.username);
 
-    return true;
+    return { isValid: true };
   };
 }

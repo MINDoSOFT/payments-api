@@ -2,6 +2,10 @@ import { UserJWT } from '../interfaces/UserJWT';
 import { UserService } from './user-service';
 import jsonwebtoken = require('jsonwebtoken');
 import { JWT_SINGING_KEY } from '../constants';
+import {
+  getUserJWTInput,
+  getUserJWTOutput
+} from '../interfaces/services/jwt-service-interface';
 
 export class JWTService {
   private userService: UserService;
@@ -10,8 +14,11 @@ export class JWTService {
     this.userService = userService;
   }
 
-  getUserJWT = async (username: string) => {
-    const user = await this.userService.getUser(username);
+  getUserJWT = async (input: getUserJWTInput): Promise<getUserJWTOutput> => {
+    const getUserOutput = await this.userService.getUser({
+      username: input.username
+    });
+    const user = getUserOutput.user;
 
     const expiresIn = '1h';
 
@@ -23,6 +30,6 @@ export class JWTService {
       expiresIn: expiresIn
     });
 
-    return [token, expiresIn];
+    return { token, expiresIn };
   };
 }

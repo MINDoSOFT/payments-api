@@ -1,4 +1,4 @@
-import { MyError } from "./my-error";
+import { MyError } from './my-error';
 
 export class UserNotFoundError extends MyError {
   username: string;

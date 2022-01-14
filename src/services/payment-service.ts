@@ -8,6 +8,17 @@ import {
   PaymentNotFoundError
 } from '../errors/payment-service-error';
 import { MapPaymentEntityToPaymentObject } from '../interfaces/routes/payment';
+import {
+  approvePaymentInput,
+  approvePaymentOutput,
+  cancelPaymentInput,
+  cancelPaymentOutput,
+  createPaymentInput,
+  createPaymentOutput,
+  getPaymentInput,
+  getPaymentOutput,
+  getPaymentsOutput
+} from '../interfaces/services/payment-service-interface';
 import { CreatePaymentObject, PaymentObject } from '../pocos/payment-object';
 import { PaymentStatusEnum } from '../schemas/payment-schema';
 
@@ -18,21 +29,23 @@ export class PaymentService {
     this.paymentRepository = paymentRepository;
   }
 
-  getPayments = async () => {
+  getPayments = async (): Promise<getPaymentsOutput> => {
     const payments = await this.paymentRepository.findAll();
     const paymentObjects: PaymentObject[] = [];
     payments.forEach((payment) => {
       paymentObjects.push(MapPaymentEntityToPaymentObject(payment));
     });
-    return paymentObjects;
+    return { payments: paymentObjects };
   };
 
-  createPayment = async (createPaymentObject: CreatePaymentObject) => {
-    const reqPayment = new Payment(createPaymentObject);
+  createPayment = async (
+    input: createPaymentInput
+  ): Promise<createPaymentOutput> => {
+    const reqPayment = new Payment(input.payment);
 
     await this.paymentRepository.persist(reqPayment).flush();
 
-    return reqPayment._id;
+    return { paymentId: reqPayment._id };
   };
 
   private getPaymentEntity = async (paymentId: string) => {
@@ -45,12 +58,12 @@ export class PaymentService {
     }
 
     return resPayment;
-  }
+  };
 
-  getPayment = async (paymentId: string) => {
-    const paymentEntity = await this.getPaymentEntity(paymentId);
+  getPayment = async (input: getPaymentInput): Promise<getPaymentOutput> => {
+    const paymentEntity = await this.getPaymentEntity(input.paymentId);
     const paymentObject = MapPaymentEntityToPaymentObject(paymentEntity);
-    return paymentObject;
+    return { payment: paymentObject };
   };
 
   private async setPaymentStatus(payment: Payment, statusToSet: string) {
@@ -59,39 +72,43 @@ export class PaymentService {
     await this.paymentRepository.persist(payment).flush();
   }
 
-  approvePayment = async (paymentId: string) => {
-    const payment = await this.getPaymentEntity(paymentId);
+  approvePayment = async (
+    input: approvePaymentInput
+  ): Promise<approvePaymentOutput> => {
+    const payment = await this.getPaymentEntity(input.paymentId);
 
     if (
       payment.status.trim().toLowerCase() == PaymentStatusEnum.enum.cancelled
     ) {
-      throw new PaymentHasBeenCancelledError(paymentId, payment.status);
+      throw new PaymentHasBeenCancelledError(input.paymentId, payment.status);
     } else if (
       payment.status.trim().toLowerCase() == PaymentStatusEnum.enum.approved
     ) {
-      throw new PaymentAlreadyApprovedError(paymentId);
+      throw new PaymentAlreadyApprovedError(input.paymentId);
     }
 
     this.setPaymentStatus(payment, PaymentStatusEnum.enum.approved);
 
-    return true;
+    return { approved: true };
   };
 
-  cancelPayment = async (paymentId: string) => {
-    const payment = await this.getPaymentEntity(paymentId);
+  cancelPayment = async (
+    input: cancelPaymentInput
+  ): Promise<cancelPaymentOutput> => {
+    const payment = await this.getPaymentEntity(input.paymentId);
 
     if (
       payment.status.trim().toLowerCase() == PaymentStatusEnum.enum.approved
     ) {
-      throw new PaymentHasBeenApprovedError(paymentId, payment.status);
+      throw new PaymentHasBeenApprovedError(input.paymentId, payment.status);
     } else if (
       payment.status.trim().toLowerCase() == PaymentStatusEnum.enum.cancelled
     ) {
-      throw new PaymentAlreadyCancelledError(paymentId);
+      throw new PaymentAlreadyCancelledError(input.paymentId);
     }
 
     this.setPaymentStatus(payment, PaymentStatusEnum.enum.cancelled);
 
-    return true;
+    return { cancelled: true };
   };
 }

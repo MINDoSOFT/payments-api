@@ -19,7 +19,10 @@ import { UnauthorizedError } from 'express-jwt';
 import { TokenExpiredError } from 'jsonwebtoken';
 import { UserService } from '../services/user-service';
 import { JWTService } from '../services/jwt-service';
-import { UserNotFoundError, UserPasswordInvalidError } from '../errors/user-service-error';
+import {
+  UserNotFoundError,
+  UserPasswordInvalidError
+} from '../errors/user-service-error';
 
 export class AuthenticateController {
   private userService: UserService;
@@ -53,14 +56,14 @@ export class AuthenticateController {
     }
 
     try {
-      await this.userService.validateUserPassword(
-        req.body.username,
-        req.body.password
-      );
+      await this.userService.validateUserPassword({
+        username: req.body.username,
+        plainTextPassword: req.body.password
+      });
 
-      const [token, expiresIn] = await this.jwtService.getUserJWT(
-        req.body.username
-      );
+      const { token, expiresIn } = await this.jwtService.getUserJWT({
+        username: req.body.username
+      });
 
       return res.status(StatusCodes.OK).json({
         authToken: token,

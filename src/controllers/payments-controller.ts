@@ -50,7 +50,8 @@ export class PaymentsController {
     res: ListPaymentsResponse
   ) => {
     try {
-      const payments = await this.paymentService.getPayments();
+      const getPaymentsOutput = await this.paymentService.getPayments();
+      const payments = getPaymentsOutput.payments;
 
       return res.status(StatusCodes.OK).json(payments);
     } catch (error) {
@@ -67,7 +68,10 @@ export class PaymentsController {
     let reqPaymentId: string;
 
     try {
-      reqPaymentId = await this.paymentService.createPayment(req.body);
+      const createPaymentOutput = await this.paymentService.createPayment({
+        payment: req.body
+      });
+      reqPaymentId = createPaymentOutput.paymentId;
     } catch (error) {
       if (error instanceof ZodError) {
         const details: ErrorDetail[] = [];
@@ -88,7 +92,10 @@ export class PaymentsController {
     }
 
     try {
-      const resPayment = await this.paymentService.getPayment(reqPaymentId);
+      const getPaymentOutput = await this.paymentService.getPayment({
+        paymentId: reqPaymentId
+      });
+      const resPayment = getPaymentOutput.payment;
 
       return res.status(StatusCodes.CREATED).json(resPayment);
     } catch (error) {
@@ -126,7 +133,10 @@ export class PaymentsController {
     const paymentId = req.params.id;
 
     try {
-      const resPayment = await this.paymentService.getPayment(paymentId);
+      const getPaymentOutput = await this.paymentService.getPayment({
+        paymentId
+      });
+      const resPayment = getPaymentOutput.payment;
       return res.status(StatusCodes.OK).json(resPayment);
     } catch (error) {
       return res
@@ -163,7 +173,7 @@ export class PaymentsController {
     const paymentId = req.params.id;
 
     try {
-      await this.paymentService.approvePayment(paymentId);
+      await this.paymentService.approvePayment({ paymentId });
 
       return res.status(StatusCodes.OK).send();
     } catch (error) {
@@ -213,7 +223,7 @@ export class PaymentsController {
     const paymentId = req.params.id;
 
     try {
-      await this.paymentService.cancelPayment(paymentId);
+      await this.paymentService.cancelPayment({ paymentId });
 
       return res.status(StatusCodes.OK).send();
     } catch (error) {
