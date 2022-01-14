@@ -24,6 +24,7 @@ import { JWT_SINGING_KEY } from './constants.js';
 import { PaymentsController } from './controllers/payments-controller.js';
 import { UserService } from './services/user-service.js';
 import { JWTService } from './services/jwt-service.js';
+import { PaymentService } from './services/payment-service.js';
 
 const roleId = readFileSync('./vault-data/payments-api-role_id', 'utf8');
 const secretId = readFileSync('./vault-data/payments-api-secret_id', 'utf8');
@@ -74,6 +75,7 @@ const expressJwtHandler = expressjwt({
 
   const userService = new UserService(DI.userRepository);
   const jwtService = new JWTService(userService);
+  const paymentService = new PaymentService(DI.paymentRepository);
 
   const authenticateController = new AuthenticateController(
     userService,
@@ -82,7 +84,7 @@ const expressJwtHandler = expressjwt({
 
   app.post('/v1/authenticate/', authenticateController.authenticateUser);
 
-  const paymentsController = new PaymentsController(DI.paymentRepository);
+  const paymentsController = new PaymentsController(paymentService);
 
   app.get('/v1/payments', expressJwtHandler, paymentsController.getPayments);
 

@@ -19,6 +19,7 @@ import { UnauthorizedError } from 'express-jwt';
 import { TokenExpiredError } from 'jsonwebtoken';
 import { UserService } from '../services/user-service';
 import { JWTService } from '../services/jwt-service';
+import { UserNotFoundError, UserPasswordInvalidError } from '../errors/user-service-error';
 
 export class AuthenticateController {
   private userService: UserService;

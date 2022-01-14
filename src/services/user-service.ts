@@ -1,6 +1,7 @@
 import { EntityRepository } from '@mikro-orm/core';
 import { User } from '../entities/User';
 import bcrypt = require('bcrypt');
+import { UserNotFoundError, UserPasswordInvalidError } from '../errors/user-service-error';
 
 export class UserService {
   private userRepository: EntityRepository<User>;

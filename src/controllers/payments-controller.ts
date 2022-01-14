@@ -1,7 +1,5 @@
-import { EntityRepository } from '@mikro-orm/core';
 import { StatusCodes } from 'http-status-codes';
 import { ZodError } from 'zod';
-import { isPayment, Payment } from '../entities/Payment';
 import {
   ERROR_ALREADY_APPROVED_CODE,
   ERROR_ALREADY_APPROVED_MESSAGE,
@@ -14,6 +12,12 @@ import {
   ERROR_VALIDATION_CODE,
   ERROR_VALIDATION_MESSAGE
 } from '../enums/api-error-codes';
+import {
+  PaymentAlreadyApprovedError,
+  PaymentAlreadyCancelledError,
+  PaymentHasBeenApprovedError,
+  PaymentHasBeenCancelledError
+} from '../errors/payment-service-error';
 import { ErrorDetail, ErrorResponse } from '../interfaces/routes/error';
 import {
   ApprovePaymentRequest,
@@ -25,21 +29,20 @@ import {
   GetPaymentRequest,
   GetPaymentResponse,
   ListPaymentsRequest,
-  ListPaymentsResponse,
-  MapPaymentEntityToPaymentObject
+  ListPaymentsResponse
 } from '../interfaces/routes/payment';
-import { PaymentObject } from '../pocos/payment-object';
 import {
   ApprovePaymentSchema,
   CancelPaymentSchema,
   GetPaymentSchema
 } from '../schemas/payment-schema';
+import { PaymentService } from '../services/payment-service';
 
 export class PaymentsController {
-  private paymentRepository: EntityRepository<Payment>;
+  private paymentService: PaymentService;
 
-  constructor(paymentRepository: EntityRepository<Payment>) {
-    this.paymentRepository = paymentRepository;
+  constructor(paymentService: PaymentService) {
+    this.paymentService = paymentService;
   }
 
   getPayments = async (
@@ -47,13 +50,9 @@ export class PaymentsController {
     res: ListPaymentsResponse
   ) => {
     try {
-      const payments = await this.paymentRepository.findAll();
-      const paymentObjects: PaymentObject[] = [];
-      payments.forEach((payment) => {
-        paymentObjects.push(MapPaymentEntityToPaymentObject(payment));
-      });
+      const payments = await this.paymentService.getPayments();
 
-      return res.status(StatusCodes.OK).json(paymentObjects);
+      return res.status(StatusCodes.OK).json(payments);
     } catch (error) {
       return res
         .status(StatusCodes.INTERNAL_SERVER_ERROR)
@@ -68,10 +67,7 @@ export class PaymentsController {
     let reqPaymentId: string;
 
     try {
-      const reqPayment = new Payment(req.body);
-      reqPaymentId = reqPayment._id;
-
-      await this.paymentRepository.persist(reqPayment).flush();
+      reqPaymentId = await this.paymentService.createPayment(req.body);
     } catch (error) {
       if (error instanceof ZodError) {
         const details: ErrorDetail[] = [];
@@ -92,18 +88,9 @@ export class PaymentsController {
     }
 
     try {
-      const resPayment = await this.paymentRepository.findOne({
-        _id: reqPaymentId
-      });
+      const resPayment = await this.paymentService.getPayment(reqPaymentId);
 
-      if (isPayment(resPayment)) {
-        const paymentObject = MapPaymentEntityToPaymentObject(resPayment);
-        return res.status(StatusCodes.CREATED).json(paymentObject);
-      } else {
-        return res
-          .status(StatusCodes.INTERNAL_SERVER_ERROR)
-          .send('Something went wrong.');
-      }
+      return res.status(StatusCodes.CREATED).json(resPayment);
     } catch (error) {
       return res
         .status(StatusCodes.INTERNAL_SERVER_ERROR)
@@ -139,23 +126,13 @@ export class PaymentsController {
     const paymentId = req.params.id;
 
     try {
-      const resPayment = await this.paymentRepository.findOne({
-        _id: paymentId
-      });
-
-      if (isPayment(resPayment)) {
-        const paymentObject = MapPaymentEntityToPaymentObject(resPayment);
-        return res.status(StatusCodes.OK).json(paymentObject);
-      }
+      const resPayment = await this.paymentService.getPayment(paymentId);
+      return res.status(StatusCodes.OK).json(resPayment);
     } catch (error) {
       return res
         .status(StatusCodes.INTERNAL_SERVER_ERROR)
         .send(`Error loading payment '${paymentId}':` + error);
     }
-
-    return res
-      .status(StatusCodes.NOT_FOUND)
-      .send(`Payment '${paymentId}' not found.`);
   };
 
   approvePayment = async (
@@ -186,35 +163,26 @@ export class PaymentsController {
     const paymentId = req.params.id;
 
     try {
-      const payment = await this.paymentRepository.findOne({ _id: paymentId });
+      await this.paymentService.approvePayment(paymentId);
 
-      if (isPayment(payment)) {
-        if (payment.status.trim().toLowerCase() == 'cancelled') {
-          return res.status(StatusCodes.BAD_REQUEST).json({
-            code: ERROR_CANNOT_APPROVE_CODE,
-            message: ERROR_CANNOT_APPROVE_MESSAGE
-          });
-        } else if (payment.status.trim().toLowerCase() == 'approved') {
-          return res.status(StatusCodes.BAD_REQUEST).json({
-            code: ERROR_ALREADY_APPROVED_CODE,
-            message: ERROR_ALREADY_APPROVED_MESSAGE
-          });
-        }
-
-        payment.status = 'approved';
-
-        await this.paymentRepository.persist(payment).flush();
-        return res.status(StatusCodes.OK).send();
-      }
+      return res.status(StatusCodes.OK).send();
     } catch (error) {
-      return res
-        .status(StatusCodes.INTERNAL_SERVER_ERROR)
-        .send(`Error loading payment '${paymentId}':` + error);
+      if (error instanceof PaymentHasBeenCancelledError) {
+        return res.status(StatusCodes.BAD_REQUEST).json({
+          code: ERROR_CANNOT_APPROVE_CODE,
+          message: ERROR_CANNOT_APPROVE_MESSAGE
+        });
+      } else if (error instanceof PaymentAlreadyApprovedError) {
+        return res.status(StatusCodes.BAD_REQUEST).json({
+          code: ERROR_ALREADY_APPROVED_CODE,
+          message: ERROR_ALREADY_APPROVED_MESSAGE
+        });
+      } else {
+        return res
+          .status(StatusCodes.INTERNAL_SERVER_ERROR)
+          .send(`Error approving payment '${paymentId}':` + error);
+      }
     }
-
-    return res
-      .status(StatusCodes.NOT_FOUND)
-      .send(`Payment '${paymentId}' not found.`);
   };
 
   cancelPayment = async (
@@ -245,34 +213,25 @@ export class PaymentsController {
     const paymentId = req.params.id;
 
     try {
-      const payment = await this.paymentRepository.findOne({ _id: paymentId });
+      await this.paymentService.cancelPayment(paymentId);
 
-      if (isPayment(payment)) {
-        if (payment.status.trim().toLowerCase() == 'approved') {
-          return res.status(StatusCodes.BAD_REQUEST).json({
-            code: ERROR_CANNOT_CANCEL_CODE,
-            message: ERROR_CANNOT_CANCEL_MESSAGE
-          });
-        } else if (payment.status.trim().toLowerCase() == 'cancelled') {
-          return res.status(StatusCodes.BAD_REQUEST).json({
-            code: ERROR_ALREADY_CANCELLED_CODE,
-            message: ERROR_ALREADY_CANCELLED_MESSAGE
-          });
-        }
-
-        payment.status = 'cancelled';
-
-        await this.paymentRepository.persist(payment).flush();
-        return res.status(StatusCodes.OK).send();
-      }
+      return res.status(StatusCodes.OK).send();
     } catch (error) {
-      return res
-        .status(StatusCodes.INTERNAL_SERVER_ERROR)
-        .send(`Error loading payment '${paymentId}':` + error);
+      if (error instanceof PaymentHasBeenApprovedError) {
+        return res.status(StatusCodes.BAD_REQUEST).json({
+          code: ERROR_CANNOT_CANCEL_CODE,
+          message: ERROR_CANNOT_CANCEL_MESSAGE
+        });
+      } else if (error instanceof PaymentAlreadyCancelledError) {
+        return res.status(StatusCodes.BAD_REQUEST).json({
+          code: ERROR_ALREADY_CANCELLED_CODE,
+          message: ERROR_ALREADY_CANCELLED_MESSAGE
+        });
+      } else {
+        return res
+          .status(StatusCodes.INTERNAL_SERVER_ERROR)
+          .send(`Error cancelling payment '${paymentId}':` + error);
+      }
     }
-
-    return res
-      .status(StatusCodes.NOT_FOUND)
-      .send(`Payment '${paymentId}' not found.`);
   };
 }

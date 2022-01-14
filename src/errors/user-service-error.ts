@@ -1,4 +1,6 @@
-class UserNotFoundError extends MyError {
+import { MyError } from "./my-error";
+
+export class UserNotFoundError extends MyError {
   username: string;
   constructor(username: string) {
     super('Could not find user with username: ' + username);
@@ -6,7 +8,7 @@ class UserNotFoundError extends MyError {
   }
 }
 
-class UserPasswordInvalidError extends MyError {
+export class UserPasswordInvalidError extends MyError {
   username: string;
   constructor(username: string) {
     super('Password does not match with password for username: ' + username);
