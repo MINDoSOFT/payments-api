@@ -1,22 +1,23 @@
-import { EntityRepository } from "@mikro-orm/core";
 import { StatusCodes } from "http-status-codes";
-import { JWT_SINGING_KEY } from "../constants";
-import { User } from "../entities/User";
+
 import { ERROR_AUTH_TOKEN_EXPIRED_CODE, ERROR_AUTH_TOKEN_EXPIRED_MESSAGE, ERROR_UNAUTHORIZED_CODE, ERROR_UNAUTHORIZED_MESSAGE, ERROR_VALIDATION_CODE, ERROR_VALIDATION_MESSAGE } from "../enums/api-error-codes";
 import { AuthenticateRequest, AuthenticateResponse } from "../interfaces/routes/authenticate";
 import { ErrorDetail, ErrorResponse } from "../interfaces/routes/error";
-import { isUserJWT, UserJWT } from "../interfaces/UserJWT";
-import jsonwebtoken = require('jsonwebtoken');
-import bcrypt = require('bcrypt');
+
 import express from 'express';
 import { UnauthorizedError } from "express-jwt";
 import { TokenExpiredError } from "jsonwebtoken";
+import { UserService } from "../services/user-service";
+import { JWTService } from "../services/jwt-service";
 
 export class AuthenticateController {
-  private userRepository : EntityRepository<User>
+  private userService : UserService
+  private jwtService : JWTService
 
-  constructor(userRepository : EntityRepository<User>) {
-    this.userRepository = userRepository;
+  constructor(userService : UserService,
+    jwtService: JWTService) {
+    this.userService = userService;
+    this.jwtService = jwtService;
   }
 
   authenticateUser = async (req: AuthenticateRequest, res: AuthenticateResponse & ErrorResponse) => {
@@ -35,45 +36,32 @@ export class AuthenticateController {
         });
       }
   
-      const user = await this.userRepository.findOne({username : req.body.username});
+      try {
+        await this.userService.validateUserPassword(req.body.username, req.body.password);
+
+        const [token, expiresIn] = await this.jwtService.getUserJWT(req.body.username)
   
-      if (!user || 
-        !bcrypt.compareSync(req.body.password, user.password)) {
-        const detail = new ErrorDetail("Wrong username or password")
-    
-        return res.status(StatusCodes.UNAUTHORIZED)
-        .json({
-          code: ERROR_VALIDATION_CODE, 
-          message: ERROR_VALIDATION_MESSAGE, 
-          details: [detail]
-        });
-      } else {
-        const expiresIn = '1h'
-  
-        const userJWT : UserJWT = {
-          userId : user._id.toString()
-        }
-  
-        const token = await jsonwebtoken.sign(
-          userJWT, 
-          JWT_SINGING_KEY,
-          { expiresIn: expiresIn }
-        );
         return res.status(StatusCodes.OK).json({
           authToken: token,
           expiresIn: expiresIn
         });
+
+      } catch (error) {
+        if (error instanceof UserNotFoundError || 
+          error instanceof UserPasswordInvalidError) {
+            const detail = new ErrorDetail("Wrong username or password")
+    
+            return res.status(StatusCodes.UNAUTHORIZED)
+            .json({
+              code: ERROR_VALIDATION_CODE, 
+              message: ERROR_VALIDATION_MESSAGE, 
+              details: [detail]
+            });
+          } else {
+            return res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(`Unhandled error while authenticating user:` + error);
+          }
       }
   };
-
-  helloProtectedWorld = (req: express.Request, res: express.Response) => {
-    const userJWT = req.user;
-    if (isUserJWT(userJWT)) {
-      return res.status(StatusCodes.OK).send('Hello Protected World! ' + userJWT.userId)
-    } else {
-      return res.status(StatusCodes.INTERNAL_SERVER_ERROR).send('Something went wrong.')
-    }
-  }
 
   handleAuthenticationError = (err: Error, _req: express.Request, res: express.Response, next: express.NextFunction) => {
     // This must come after any routes, otherwise it is not called !

@@ -20,6 +20,8 @@ import { readFileSync } from 'fs';
 import { AuthenticateController } from './controllers/authenticate-controller';
 import { JWT_SINGING_KEY } from './constants.js';
 import { PaymentsController } from './controllers/payments-controller.js';
+import { UserService } from './services/user-service.js';
+import { JWTService } from './services/jwt-service.js';
 
 const roleId = readFileSync('./vault-data/payments-api-role_id', 'utf8')
 const secretId = readFileSync('./vault-data/payments-api-secret_id', 'utf8')
@@ -64,14 +66,12 @@ const expressJwtHandler = expressjwt({ secret: JWT_SINGING_KEY, algorithms: ['HS
     return res.status(StatusCodes.OK).send('Hello World!')
   });
   
-  const authenticateController = new AuthenticateController(DI.userRepository);
+  const userService = new UserService(DI.userRepository);
+  const jwtService = new JWTService(userService);
+
+  const authenticateController = new AuthenticateController(userService, jwtService);
 
   app.post('/v1/authenticate/', authenticateController.authenticateUser);
-
-  app.get('/protected', 
-    expressJwtHandler,
-    authenticateController.helloProtectedWorld
-  );
 
   const paymentsController = new PaymentsController(DI.paymentRepository);
 
