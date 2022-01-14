@@ -34,6 +34,3 @@ vault read -format=json auth/approle/role/payments-api/role-id \
   | jq -r '.data.role_id' > ${vault_data_dir}/payments-api-role_id
 vault write -format=json -f auth/approle/role/payments-api/secret-id \
   | jq -r '.data.secret_id' > ${vault_data_dir}/payments-api-secret_id
-
-# Restart the payments-api service
-docker-compose restart payments-api

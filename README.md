@@ -14,4 +14,5 @@ npm run seed
 docker-compose up
 ./vault-scripts/00-mongodb-secrets.sh
 ./vault-scripts/01-paymentsapi-app-role.sh
+docker-compose up --build payments-api
 ```

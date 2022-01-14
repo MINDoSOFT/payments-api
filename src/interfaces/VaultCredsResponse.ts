@@ -1,6 +1,6 @@
 export interface VaultCredsResponse {
-    data: {
-        username: string,
-        password: string,
-    }
+  data: {
+    username: string;
+    password: string;
+  };
 }

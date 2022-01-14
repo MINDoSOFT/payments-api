@@ -1,50 +1,52 @@
-import { BaseEntity, Entity, PrimaryKey, Property } from "@mikro-orm/core";
+import { BaseEntity, Entity, PrimaryKey, Property } from '@mikro-orm/core';
 import { v4 } from 'uuid';
-import { CreatePaymentObject } from "../pocos/payment-object";
-import { CreatePaymentSchema, PaymentStatusEnum } from "../schemas/payment-schema";
+import { CreatePaymentObject } from '../pocos/payment-object';
+import {
+  CreatePaymentSchema,
+  PaymentStatusEnum
+} from '../schemas/payment-schema';
 
 @Entity()
 export class Payment extends BaseEntity<Payment, '_id'> {
+  @PrimaryKey()
+  _id: string = v4();
 
-    @PrimaryKey()
-    _id: string = v4();
-  
-    @Property()
-    payeeId: string;
-    
-    @Property()
-    payerId: string;
+  @Property()
+  payeeId: string;
 
-    @Property()
-    paymentSystem: string;
+  @Property()
+  payerId: string;
 
-    @Property()
-    paymentMethod: string;
+  @Property()
+  paymentSystem: string;
 
-    @Property()
-    amount: number;
+  @Property()
+  paymentMethod: string;
 
-    @Property()
-    currency: string;
+  @Property()
+  amount: number;
 
-    @Property()
-    comment: string;
+  @Property()
+  currency: string;
 
-    @Property()
-    status: string = PaymentStatusEnum.enum.created;
+  @Property()
+  comment: string;
 
-    @Property()
-    createdAt: Date = new Date();
-  
-    @Property({ onUpdate: () => new Date() })
-    updatedAt: Date = new Date();
+  @Property()
+  status: string = PaymentStatusEnum.enum.created;
+
+  @Property()
+  createdAt: Date = new Date();
+
+  @Property({ onUpdate: () => new Date() })
+  updatedAt: Date = new Date();
 
   constructor(payment: CreatePaymentObject) {
     super();
 
-    if (!payment) throw Error("Missing payment")
+    if (!payment) throw Error('Missing payment');
 
-    CreatePaymentSchema.parse(payment)
+    CreatePaymentSchema.parse(payment);
 
     this.payeeId = payment.payeeId;
     this.payerId = payment.payerId;
@@ -57,5 +59,5 @@ export class Payment extends BaseEntity<Payment, '_id'> {
 }
 
 export function isPayment(arg: any): arg is Payment {
-    return arg && arg.id;
+  return arg && arg.id;
 }
