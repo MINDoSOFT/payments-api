@@ -3,6 +3,8 @@ import { MongoHighlighter } from '@mikro-orm/mongo-highlighter';
 import { User } from './entities/User';
 import { Payment } from './entities/Payment';
 
+const mongoDbHost = process.env.MONGO_DB_HOST;
+
 const ormOptions: Options = {
   type: 'mongo',
   entities: [User, Payment],
@@ -11,7 +13,7 @@ const ormOptions: Options = {
   debug: true,
   user: 'an-invalid-user',
   password: 'an-invalid-password',
-  clientUrl: 'mongodb://mongodb_container:27017'
+  clientUrl: `mongodb://${mongoDbHost}:27017`
 };
 
 export default ormOptions;
