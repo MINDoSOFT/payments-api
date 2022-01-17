@@ -4,6 +4,8 @@ import 'reflect-metadata';
 import {
   EntityManager,
   EntityRepository,
+  MikroORM,
+  ORMDomain,
   RequestContext
 } from '@mikro-orm/core';
 import { User } from './entities/User';
@@ -30,12 +32,13 @@ const expressJwtHandler = expressjwt({
 export const app = express();
 
 export function setupRoutes(  
-  em: EntityManager,
-  userRepository: EntityRepository<User>,
-  paymentRepository: EntityRepository<Payment>) {
+  orm: MikroORM) {
+
+  const userRepository = orm.em.getRepository(User);
+  const paymentRepository = orm.em.getRepository(Payment);
 
   app.use(bodyParser.json());
-  app.use((_req, _res, next) => RequestContext.create(em, next));
+  app.use((_req, _res, next) => RequestContext.create(orm.em, next));
 
   app.get('/', (_req: express.Request, res: express.Response) => {
     return res.status(StatusCodes.OK).send('Hello World!');

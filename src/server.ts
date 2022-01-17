@@ -9,19 +9,10 @@ if (dotenvResult.error) {
 import {app, setupRoutes} from './index'
 export {app} from './index'
 import * as http from 'http';
-import { VaultService } from './services/vault-service';
+import { MockVaultService, VaultService } from './services/vault-service';
 import { readFileSync } from 'fs';
-import ormOptions from './mikro-orm.config';
-import { EntityManager, EntityRepository, MikroORM } from '@mikro-orm/core';
-import { User } from './entities/User';
-import { Payment } from './entities/Payment';
 
-const DI = {} as {
-  orm: MikroORM;
-  em: EntityManager;
-  userRepository: EntityRepository<User>;
-  paymentRepository: EntityRepository<Payment>;
-};
+import { MongoService, MongoServiceType } from './services/mongo-service';
 
 const vaultHost = process.env.VAULT_HOST;
 
@@ -33,23 +24,31 @@ const vaultOptions = {
 const roleId = readFileSync('./vault-data/payments-api-role_id', 'utf8');
 const secretId = readFileSync('./vault-data/payments-api-secret_id', 'utf8');
 
-const vaultService = new VaultService(vaultOptions, roleId, secretId);
+let vaultService : VaultService | MockVaultService;
+
+if (process.env.VAULT_TYPE && process.env.VAULT_TYPE == 'MOCK') {
+    vaultService = new MockVaultService('just a test username', 'just a test password');
+} else {
+    vaultService = new VaultService(vaultOptions, roleId, secretId);
+}
+
+let mongoType : MongoServiceType = MongoServiceType.REAL;
+
+if (process.env.MONGO_DB_TYPE && process.env.MONGO_DB_TYPE == 'INMEMORY') {
+    mongoType = MongoServiceType.INMEMORY;
+}
+
+let mongoService : MongoService;
 
 Promise.resolve(vaultService.init()).
 then(() => 
     Promise.resolve(vaultService.getCredentials({path : 'mongodb/creds/payments-api-client'})).
     then((mongoDbCreds) => {
-            ormOptions.user = mongoDbCreds.username;
-            ormOptions.password = mongoDbCreds.password;
+        mongoService = new MongoService(mongoType, mongoDbCreds.username, mongoDbCreds.password);
     }).
-    then(() => Promise.resolve(MikroORM.init(ormOptions).
-        then((orm) => {
-            DI.orm = orm;
-            DI.em = DI.orm.em;
-            DI.userRepository = DI.orm.em.getRepository(User);
-            DI.paymentRepository = DI.orm.em.getRepository(Payment);
-
-            setupRoutes(DI.em, DI.userRepository, DI.paymentRepository);
+    then(() => Promise.resolve(mongoService.init().
+        then(() => {
+            setupRoutes(mongoService.getOrm());
         })).
         then(() => {
             runServer();
@@ -68,6 +67,6 @@ async function runServer() {
 }
 
 export function closeServer() {
+    if (mongoService) mongoService.closeOrm();
     if (server) server.close();
-    if (DI.orm) DI.orm.close();
 }

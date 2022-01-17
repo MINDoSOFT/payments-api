@@ -35,3 +35,24 @@ export class VaultService {
   }
 
 }
+
+export class MockVaultService {
+
+  private username : string;
+  private password : string;
+
+  constructor(username : string, password : string) {
+
+    this.username = username;
+    this.password = password;
+  }
+
+  init = async (): Promise<void> => {
+    console.log('Mock Vault Service instantiated OK.');
+  }
+
+  getCredentials = async (input : getVaultCredentialsInput): Promise<getVaultCredentialsOutput> => {
+    return { username : this.username, password: this.password };
+  }
+
+}
