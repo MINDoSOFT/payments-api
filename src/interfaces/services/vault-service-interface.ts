@@ -3,6 +3,11 @@ export interface VaultOptions {
     endpoint: string
 }
 
+export interface VaultServiceInterface {
+  init (): Promise<void>;
+  getCredentials (input : getVaultCredentialsInput): Promise<getVaultCredentialsOutput>;
+}
+
 export interface getVaultCredentialsInput {
   path: string;
 }

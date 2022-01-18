@@ -2,16 +2,10 @@ import bodyParser from 'body-parser';
 import express from 'express';
 import 'reflect-metadata';
 import {
-  EntityManager,
-  EntityRepository,
-  MikroORM,
-  ORMDomain,
   RequestContext
 } from '@mikro-orm/core';
-import { User } from './entities/User';
 
 import expressjwt = require('express-jwt');
-import { Payment } from './entities/Payment';
 
 import { StatusCodes } from 'http-status-codes';
 
@@ -21,6 +15,7 @@ import { PaymentsController } from './controllers/payments-controller';
 import { UserService } from './services/user-service';
 import { JWTService } from './services/jwt-service';
 import { PaymentService } from './services/payment-service';
+import { MongoService } from './services/mongo-service';
 
 
 
@@ -32,21 +27,18 @@ const expressJwtHandler = expressjwt({
 export const app = express();
 
 export function setupRoutes(  
-  orm: MikroORM) {
-
-  const userRepository = orm.em.getRepository(User);
-  const paymentRepository = orm.em.getRepository(Payment);
+  mongoService: MongoService) {
 
   app.use(bodyParser.json());
-  app.use((_req, _res, next) => RequestContext.create(orm.em, next));
+  app.use((_req, _res, next) => RequestContext.create(mongoService.getEntityManager(), next));
 
   app.get('/', (_req: express.Request, res: express.Response) => {
     return res.status(StatusCodes.OK).send('Hello World!');
   });
 
-  const userService = new UserService(userRepository);
+  const userService = new UserService(mongoService);
   const jwtService = new JWTService(userService);
-  const paymentService = new PaymentService(paymentRepository);
+  const paymentService = new PaymentService(mongoService);
 
   const authenticateController = new AuthenticateController(
     userService,

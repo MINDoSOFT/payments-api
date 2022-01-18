@@ -11,12 +11,13 @@ import {
   validateUserPasswordInput,
   validateUserPasswordOutput
 } from '../interfaces/services/user-service-interface';
+import { MongoService } from './mongo-service';
 
 export class UserService {
   private userRepository: EntityRepository<User>;
 
-  constructor(userRepository: EntityRepository<User>) {
-    this.userRepository = userRepository;
+  constructor(mongoService : MongoService) {
+    this.userRepository = mongoService.getUserRepository();
   }
 
   getUser = async (input: getUserInput): Promise<getUserOutput> => {

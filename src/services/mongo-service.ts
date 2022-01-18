@@ -1,9 +1,12 @@
-import { MikroORM } from '@mikro-orm/core';
+import { Connection, EntityManager, IDatabaseDriver, MikroORM } from '@mikro-orm/core';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { initMongoOutput } from '../interfaces/services/mongo-service-interface';
 import realMongoOrmOptions from '../mikro-orm.config';
 import { Options } from '@mikro-orm/core';
 import { MongoNotInitialisedError } from '../errors/mongo-service-error';
+import { EntityRepository } from '@mikro-orm/mongodb';
+import { User } from '../entities/User';
+import { Payment } from '../entities/Payment';
 
 export enum MongoServiceType {
     REAL = 'Real',
@@ -40,12 +43,14 @@ export class MongoService {
             throw new MongoNotInitialisedError();
         }
 
+        console.log(`Mongo ${this.mongoType} initialised OK.`);
+
         return { success: true };
     }
 
-    getOrm = () => {
+    getEntityManager = () : EntityManager<IDatabaseDriver<Connection>> => {
         if (!this.orm) throw new MongoNotInitialisedError();
-        return this.orm;
+        return this.orm.em;
     }
 
     closeOrm = () => {
@@ -54,6 +59,16 @@ export class MongoService {
         if (this.mongoType == MongoServiceType.INMEMORY && this.mongoInMemoryServer) {
             this.mongoInMemoryServer.stop();
         }
+    }
+
+    getUserRepository = () : EntityRepository<User> => {
+        if (!this.orm) throw new MongoNotInitialisedError();
+        return this.orm.em.getRepository(User);
+    }
+
+    getPaymentRepository = () : EntityRepository<Payment> => {
+        if (!this.orm) throw new MongoNotInitialisedError();
+        return this.orm.em.getRepository(Payment);
     }
 
 }

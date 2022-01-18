@@ -1,9 +1,9 @@
 import NodeVault from "node-vault";
 import { VaultCredentialsNotFoundError } from "../errors/vault-service-error";
-import { getVaultCredentialsInput, getVaultCredentialsOutput, VaultOptions } from "../interfaces/services/vault-service-interface";
+import { getVaultCredentialsInput, getVaultCredentialsOutput, VaultOptions, VaultServiceInterface } from "../interfaces/services/vault-service-interface";
 import { VaultCredsResponse } from "../interfaces/VaultCredsResponse";
 
-export class VaultService {
+export class VaultService implements VaultServiceInterface {
   private vaultOptions: VaultOptions;
   private roleId : string;
   private secretId : string;
@@ -36,7 +36,7 @@ export class VaultService {
 
 }
 
-export class MockVaultService {
+export class MockVaultService implements VaultServiceInterface {
 
   private username : string;
   private password : string;
@@ -51,7 +51,7 @@ export class MockVaultService {
     console.log('Mock Vault Service instantiated OK.');
   }
 
-  getCredentials = async (input : getVaultCredentialsInput): Promise<getVaultCredentialsOutput> => {
+  getCredentials = async (_input : getVaultCredentialsInput): Promise<getVaultCredentialsOutput> => {
     return { username : this.username, password: this.password };
   }
 

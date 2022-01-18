@@ -13,6 +13,7 @@ import { MockVaultService, VaultService } from './services/vault-service';
 import { readFileSync } from 'fs';
 
 import { MongoService, MongoServiceType } from './services/mongo-service';
+import { VaultServiceInterface } from './interfaces/services/vault-service-interface';
 
 const vaultHost = process.env.VAULT_HOST;
 
@@ -24,7 +25,7 @@ const vaultOptions = {
 const roleId = readFileSync('./vault-data/payments-api-role_id', 'utf8');
 const secretId = readFileSync('./vault-data/payments-api-secret_id', 'utf8');
 
-let vaultService : VaultService | MockVaultService;
+let vaultService : VaultServiceInterface;
 
 if (process.env.VAULT_TYPE && process.env.VAULT_TYPE == 'MOCK') {
     vaultService = new MockVaultService('just a test username', 'just a test password');
@@ -48,7 +49,7 @@ then(() =>
     }).
     then(() => Promise.resolve(mongoService.init().
         then(() => {
-            setupRoutes(mongoService.getOrm());
+            setupRoutes(mongoService);
         })).
         then(() => {
             runServer();

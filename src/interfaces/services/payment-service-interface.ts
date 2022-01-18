@@ -1,4 +1,3 @@
-import { Payment } from '../../entities/Payment';
 import { CreatePaymentObject, PaymentObject } from '../../pocos/payment-object';
 
 export interface getPaymentsOutput {

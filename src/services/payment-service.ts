@@ -19,14 +19,15 @@ import {
   getPaymentOutput,
   getPaymentsOutput
 } from '../interfaces/services/payment-service-interface';
-import { CreatePaymentObject, PaymentObject } from '../pocos/payment-object';
+import { PaymentObject } from '../pocos/payment-object';
 import { PaymentStatusEnum } from '../schemas/payment-schema';
+import { MongoService } from './mongo-service';
 
 export class PaymentService {
   private paymentRepository: EntityRepository<Payment>;
 
-  constructor(paymentRepository: EntityRepository<Payment>) {
-    this.paymentRepository = paymentRepository;
+  constructor(mongoService : MongoService) {
+    this.paymentRepository = mongoService.getPaymentRepository();
   }
 
   getPayments = async (): Promise<getPaymentsOutput> => {
