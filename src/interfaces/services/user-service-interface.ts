@@ -16,3 +16,12 @@ export interface validateUserPasswordInput {
 export interface validateUserPasswordOutput {
   isValid: boolean;
 }
+
+export interface addUserForTestingInput {
+  username: string;
+  plaintextPassword: string;
+}
+
+export interface addUserForTestingOutput {
+  created: boolean;
+}

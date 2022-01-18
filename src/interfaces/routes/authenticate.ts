@@ -1,3 +1,4 @@
+import { AuthenticateResponseObject } from '../../pocos/authenticate-response-object';
 import { TypedRequestBody } from '../TypedRequestBody';
 import { TypedResponseBody } from '../TypedResponseBody';
 
@@ -8,7 +9,4 @@ export type AuthenticateRequest = TypedRequestBody<{
 }>;
 
 // tslint:disable-next-line:no-empty-interface
-export type AuthenticateResponse = TypedResponseBody<{
-  authToken: string;
-  expiresIn: string;
-}>;
+export type AuthenticateResponse = TypedResponseBody<AuthenticateResponseObject>;

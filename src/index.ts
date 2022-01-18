@@ -10,7 +10,7 @@ import expressjwt = require('express-jwt');
 import { StatusCodes } from 'http-status-codes';
 
 import { AuthenticateController } from './controllers/authenticate-controller';
-import { JWT_SINGING_KEY } from './constants';
+import { APPROVE_PAYMENT_ENDPOINT, AUTHENTICATE_ENDPOINT, CANCEL_PAYMENT_ENDPOINT, CREATE_PAYMENT_ENDPOINT, GET_PAYMENTS_ENDPOINT, GET_PAYMENT_ENDPOINT, HELLO_WORLD_ENDPOINT, JWT_SINGING_KEY } from './constants';
 import { PaymentsController } from './controllers/payments-controller';
 import { UserService } from './services/user-service';
 import { JWTService } from './services/jwt-service';
@@ -73,26 +73,26 @@ export class Index {
     this.app.use(bodyParser.json());
     this.app.use((_req, _res, next) => RequestContext.create(mongoService.getEntityManager(), next));
 
-    this.app.get('/', (_req: express.Request, res: express.Response) => {
+    this.app.get(HELLO_WORLD_ENDPOINT, (_req: express.Request, res: express.Response) => {
       return res.status(StatusCodes.OK).send('Hello World!');
     });
 
-    this.app.post('/v1/authenticate', this.authenticateController.authenticateUser);
+    this.app.post(AUTHENTICATE_ENDPOINT, this.authenticateController.authenticateUser);
 
-    this.app.get('/v1/payments', this.expressJwtHandler, this.paymentsController.getPayments);
+    this.app.get(GET_PAYMENTS_ENDPOINT, this.expressJwtHandler, this.paymentsController.getPayments);
 
-    this.app.post('/v1/payments', this.expressJwtHandler, this.paymentsController.createPayment);
+    this.app.post(CREATE_PAYMENT_ENDPOINT, this.expressJwtHandler, this.paymentsController.createPayment);
 
-    this.app.get('/v1/payment/:id', this.expressJwtHandler, this.paymentsController.getPayment);
+    this.app.get(GET_PAYMENT_ENDPOINT, this.expressJwtHandler, this.paymentsController.getPayment);
 
     this.app.put(
-      '/v1/payment/:id/approve',
+      APPROVE_PAYMENT_ENDPOINT,
       this.expressJwtHandler,
       this.paymentsController.approvePayment
     );
 
     this.app.put(
-      '/v1/payment/:id/cancel',
+      CANCEL_PAYMENT_ENDPOINT,
       this.expressJwtHandler,
       this.paymentsController.cancelPayment
     );

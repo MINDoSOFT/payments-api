@@ -6,6 +6,8 @@ import {
   UserPasswordInvalidError
 } from '../errors/user-service-error';
 import {
+  addUserForTestingInput,
+  addUserForTestingOutput,
   getUserInput,
   getUserOutput,
   validateUserPasswordInput,
@@ -41,4 +43,16 @@ export class UserService {
 
     return { isValid: true };
   };
+
+  addUserForTesting = async (input : addUserForTestingInput): Promise<addUserForTestingOutput> => {
+    if ((await this.userRepository.count({ username: input.username })) === 0) {
+      const user = new User(input.username, input.plaintextPassword);
+      await this.userRepository.persist(user).flush();
+      console.log(`Created user: ${input.username}.`);
+    } else {
+      console.log(`User: ${input.username} already exists.`);
+    }
+
+    return { created : true };
+  }
 }

@@ -18,7 +18,7 @@ import {
   PaymentHasBeenApprovedError,
   PaymentHasBeenCancelledError
 } from '../errors/payment-service-error';
-import { ErrorDetail, ErrorResponse } from '../interfaces/routes/error';
+import { ErrorResponse } from '../interfaces/routes/error';
 import {
   ApprovePaymentRequest,
   ApprovePaymentResponse,
@@ -31,6 +31,7 @@ import {
   ListPaymentsRequest,
   ListPaymentsResponse
 } from '../interfaces/routes/payment';
+import { ErrorDetail } from '../pocos/error-response-object';
 import {
   ApprovePaymentSchema,
   CancelPaymentSchema,
@@ -180,12 +181,14 @@ export class PaymentsController {
       if (error instanceof PaymentHasBeenCancelledError) {
         return res.status(StatusCodes.BAD_REQUEST).json({
           code: ERROR_CANNOT_APPROVE_CODE,
-          message: ERROR_CANNOT_APPROVE_MESSAGE
+          message: ERROR_CANNOT_APPROVE_MESSAGE,
+          details: []
         });
       } else if (error instanceof PaymentAlreadyApprovedError) {
         return res.status(StatusCodes.BAD_REQUEST).json({
           code: ERROR_ALREADY_APPROVED_CODE,
-          message: ERROR_ALREADY_APPROVED_MESSAGE
+          message: ERROR_ALREADY_APPROVED_MESSAGE,
+          details: []
         });
       } else {
         return res
@@ -230,12 +233,14 @@ export class PaymentsController {
       if (error instanceof PaymentHasBeenApprovedError) {
         return res.status(StatusCodes.BAD_REQUEST).json({
           code: ERROR_CANNOT_CANCEL_CODE,
-          message: ERROR_CANNOT_CANCEL_MESSAGE
+          message: ERROR_CANNOT_CANCEL_MESSAGE,
+          details: []
         });
       } else if (error instanceof PaymentAlreadyCancelledError) {
         return res.status(StatusCodes.BAD_REQUEST).json({
           code: ERROR_ALREADY_CANCELLED_CODE,
-          message: ERROR_ALREADY_CANCELLED_MESSAGE
+          message: ERROR_ALREADY_CANCELLED_MESSAGE,
+          details: []
         });
       } else {
         return res

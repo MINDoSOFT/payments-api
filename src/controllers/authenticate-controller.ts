@@ -12,7 +12,7 @@ import {
   AuthenticateRequest,
   AuthenticateResponse
 } from '../interfaces/routes/authenticate';
-import { ErrorDetail, ErrorResponse } from '../interfaces/routes/error';
+import { ErrorResponse } from '../interfaces/routes/error';
 
 import express from 'express';
 import { UnauthorizedError } from 'express-jwt';
@@ -23,6 +23,10 @@ import {
   UserNotFoundError,
   UserPasswordInvalidError
 } from '../errors/user-service-error';
+import { ErrorDetail } from '../pocos/error-response-object';
+
+export const MISSING_USERNAME_OR_PASSWORD_MESSAGE = 'Missing username or password';
+export const WRONG_USERNAME_OR_PASSWORD_MESSAGE = 'Wrong username or password';
 
 export class AuthenticateController {
   private userService: UserService;
@@ -46,7 +50,7 @@ export class AuthenticateController {
       req.body.password === undefined ||
       req.body.password.trim().length === 0
     ) {
-      const detail = new ErrorDetail('Missing username and password');
+      const detail = new ErrorDetail(MISSING_USERNAME_OR_PASSWORD_MESSAGE);
 
       return res.status(StatusCodes.BAD_REQUEST).json({
         code: ERROR_VALIDATION_CODE,
@@ -74,7 +78,7 @@ export class AuthenticateController {
         error instanceof UserNotFoundError ||
         error instanceof UserPasswordInvalidError
       ) {
-        const detail = new ErrorDetail('Wrong username or password');
+        const detail = new ErrorDetail(WRONG_USERNAME_OR_PASSWORD_MESSAGE);
 
         return res.status(StatusCodes.UNAUTHORIZED).json({
           code: ERROR_VALIDATION_CODE,
