@@ -5,5 +5,5 @@ export const AUTHENTICATE_ENDPOINT = '/v1/authenticate';
 export const GET_PAYMENTS_ENDPOINT = '/v1/payments';
 export const CREATE_PAYMENT_ENDPOINT = '/v1/payments';
 export const GET_PAYMENT_ENDPOINT = '/v1/payment/:id';
-export const CANCEL_PAYMENT_ENDPOINT = '/v1/payment/:id/cancel';
-export const APPROVE_PAYMENT_ENDPOINT = '/v1/payment/:id/approve';
+export const CANCEL_PAYMENT_ENDPOINT = '/v1/payments/:id/cancel';
+export const APPROVE_PAYMENT_ENDPOINT = '/v1/payments/:id/approve';

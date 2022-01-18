@@ -3,11 +3,11 @@ chai.use(require('chai-uuid'));
 import { getApp, closeServer, getUserService, getJWTService } from '../../server';
 import {agent as request} from 'supertest';
 import { StatusCodes } from 'http-status-codes';
-import { AUTHENTICATE_ENDPOINT, CREATE_PAYMENT_ENDPOINT, GET_PAYMENTS_ENDPOINT, GET_PAYMENT_ENDPOINT, HELLO_WORLD_ENDPOINT } from '../../constants';
+import { APPROVE_PAYMENT_ENDPOINT, AUTHENTICATE_ENDPOINT, CANCEL_PAYMENT_ENDPOINT, CREATE_PAYMENT_ENDPOINT, GET_PAYMENTS_ENDPOINT, GET_PAYMENT_ENDPOINT, HELLO_WORLD_ENDPOINT } from '../../constants';
 import { MISSING_USERNAME_OR_PASSWORD_MESSAGE, WRONG_USERNAME_OR_PASSWORD_MESSAGE } from '../../controllers/authenticate-controller';
 import { AuthenticateResponseObject } from '../../pocos/authenticate-response-object';
 import { ErrorResponseObject } from '../../pocos/error-response-object';
-import { ERROR_AUTH_TOKEN_EXPIRED_CODE, ERROR_AUTH_TOKEN_EXPIRED_MESSAGE, ERROR_NOT_FOUND_CODE, ERROR_NOT_FOUND_MESSAGE, ERROR_UNAUTHORIZED_CODE, ERROR_UNAUTHORIZED_MESSAGE, ERROR_VALIDATION_CODE, ERROR_VALIDATION_MESSAGE } from '../../enums/api-error-codes';
+import { ERROR_ALREADY_APPROVED_CODE, ERROR_ALREADY_APPROVED_MESSAGE, ERROR_ALREADY_CANCELLED_CODE, ERROR_ALREADY_CANCELLED_MESSAGE, ERROR_AUTH_TOKEN_EXPIRED_CODE, ERROR_AUTH_TOKEN_EXPIRED_MESSAGE, ERROR_CANNOT_APPROVE_CODE, ERROR_CANNOT_APPROVE_MESSAGE, ERROR_CANNOT_CANCEL_CODE, ERROR_CANNOT_CANCEL_MESSAGE, ERROR_NOT_FOUND_CODE, ERROR_NOT_FOUND_MESSAGE, ERROR_UNAUTHORIZED_CODE, ERROR_UNAUTHORIZED_MESSAGE, ERROR_VALIDATION_CODE, ERROR_VALIDATION_MESSAGE } from '../../enums/api-error-codes';
 import { PaymentObject } from '../../pocos/payment-object';
 import { assertCreatedPayment, assertMissingPropertyError, assertMissingPaymentPropertiesError, assertPayment } from "./payment-helper";
 import { string } from "zod";
@@ -38,8 +38,6 @@ describe('Payments API Integration Tests', () => {
         comment: 'Salary for March 2021'
     }
 
-    let aCreatedTestPayment : PaymentObject;
-
     const aPaymentWithAmountAsString = {
         payeeId: 'cffd7c1f-e158-4c5a-97b8-7735dd56eb7b',
         payerId: '7e916836-0a91-4ee0-be2d-3ccebdcd7484',
@@ -50,6 +48,8 @@ describe('Payments API Integration Tests', () => {
         comment: 'Salary for April 2021'
     }
 
+    let aCreatedTestPayment : PaymentObject;
+
     const aSecondTestPayment = {
         payeeId: '96313259-2c55-436c-964c-cf705a7c7425',
         payerId: 'aab770fd-d5e0-4110-a484-b8ff978c1402',
@@ -59,6 +59,13 @@ describe('Payments API Integration Tests', () => {
         currency: 'EUR',
         comment: 'A really large description to test how much the maximum length of a description can be.'
     }
+
+    let aCreatedSecondTestPayment : PaymentObject;
+
+    const aPaymentIdThatDoesNotExist = 'db6f7e77-ebc9-465b-ba70-d0431fe08f34';
+
+    let anApprovedPaymentId : string;
+    let aCancelledPaymentId : string;
 
     let validUserToken : string;
 
@@ -233,7 +240,7 @@ describe('Payments API Integration Tests', () => {
 
     })
 
-    describe('Payments Integration Tests', () => {
+    describe('Payments Integration Tests List, Create, Get', () => {
 
         it('without any payments should return empty array', async () => {
             const res = await request(app)
@@ -349,6 +356,8 @@ describe('Payments API Integration Tests', () => {
             const payment : PaymentObject = res.body;
             
             assertCreatedPayment(aSecondTestPayment, payment);
+
+            aCreatedSecondTestPayment = payment;
         })
 
         it('should return exactly two payments', async () => {
@@ -382,7 +391,6 @@ describe('Payments API Integration Tests', () => {
         })
 
         it('a missing payment id should get not found', async () => {
-            const aPaymentIdThatDoesNotExist = 'db6f7e77-ebc9-465b-ba70-d0431fe08f34';
             const getPaymentEndpoint = GET_PAYMENT_ENDPOINT.replace(':id', aPaymentIdThatDoesNotExist);
 
             const res = await request(app)
@@ -408,6 +416,116 @@ describe('Payments API Integration Tests', () => {
             assert.equal(errorResponse.code, ERROR_VALIDATION_CODE);
             assert.equal(errorResponse.message, ERROR_VALIDATION_MESSAGE);
             assertMissingPropertyError('id', 'Invalid uuid', errorResponse);
+        })
+
+    })
+
+    describe('Payments Integration Tests Approve, Cancel', () => {
+
+        it('should approve the payment', async () => {
+            const approvePaymentEndpoint = APPROVE_PAYMENT_ENDPOINT.replace(':id', aCreatedTestPayment.id);
+
+            const res = await request(app)
+                .put(approvePaymentEndpoint)
+                .set('Authorization', 'bearer ' + validUserToken);
+            assert.equal(res.statusCode, StatusCodes.OK);
+
+            assert.isEmpty(res.body);
+
+            anApprovedPaymentId = aCreatedTestPayment.id;
+        })
+
+        it('should return already approved error', async () => {
+            const approvePaymentEndpoint = APPROVE_PAYMENT_ENDPOINT.replace(':id', anApprovedPaymentId);
+
+            const res = await request(app)
+                .put(approvePaymentEndpoint)
+                .set('Authorization', 'bearer ' + validUserToken);
+            assert.equal(res.statusCode, StatusCodes.BAD_REQUEST);
+
+            const errorResponse : ErrorResponseObject = res.body;
+            assert.equal(errorResponse.code, ERROR_ALREADY_APPROVED_CODE);
+            assert.equal(errorResponse.message, ERROR_ALREADY_APPROVED_MESSAGE);
+        })
+
+        it('a wrong payment id when approving should return validation error', async () => {
+            const aWrongPaymentId = 'ABCD-1234';
+            const approvePaymentEndpoint = APPROVE_PAYMENT_ENDPOINT.replace(':id', aWrongPaymentId);
+
+            const res = await request(app)
+                .put(approvePaymentEndpoint)
+                .set('Authorization', 'bearer ' + validUserToken);
+            assert.equal(res.statusCode, StatusCodes.BAD_REQUEST);
+
+            const errorResponse : ErrorResponseObject = res.body;
+            assert.equal(errorResponse.code, ERROR_VALIDATION_CODE);
+            assert.equal(errorResponse.message, ERROR_VALIDATION_MESSAGE);
+            assertMissingPropertyError('id', 'Invalid uuid', errorResponse);
+        })
+
+        it('a missing payment id when approving should get not found', async () => {
+            const approvePaymentEndpoint = APPROVE_PAYMENT_ENDPOINT.replace(':id', aPaymentIdThatDoesNotExist);
+
+            const res = await request(app)
+                .put(approvePaymentEndpoint)
+                .set('Authorization', 'bearer ' + validUserToken);
+            assert.equal(res.statusCode, StatusCodes.NOT_FOUND);
+
+            const errorResponse : ErrorResponseObject = res.body;
+            assert.equal(errorResponse.code, ERROR_NOT_FOUND_CODE);
+            assert.equal(errorResponse.message, ERROR_NOT_FOUND_MESSAGE);
+        })
+
+        it('should cancel the payment', async () => {
+            const cancelPaymentEndpoint = CANCEL_PAYMENT_ENDPOINT.replace(':id', aCreatedSecondTestPayment.id);
+
+            const res = await request(app)
+                .put(cancelPaymentEndpoint)
+                .set('Authorization', 'bearer ' + validUserToken);
+            assert.equal(res.statusCode, StatusCodes.OK);
+
+            assert.isEmpty(res.body);
+
+            aCancelledPaymentId = aCreatedSecondTestPayment.id;
+        })
+
+        it('should return already cancelled error', async () => {
+            const cancelPaymentEndpoint = CANCEL_PAYMENT_ENDPOINT.replace(':id', aCancelledPaymentId);
+
+            const res = await request(app)
+                .put(cancelPaymentEndpoint)
+                .set('Authorization', 'bearer ' + validUserToken);
+            assert.equal(res.statusCode, StatusCodes.BAD_REQUEST);
+
+            const errorResponse : ErrorResponseObject = res.body;
+            assert.equal(errorResponse.code, ERROR_ALREADY_CANCELLED_CODE);
+            assert.equal(errorResponse.message, ERROR_ALREADY_CANCELLED_MESSAGE);
+        })
+
+        it('should return cannot approve error', async () => {
+            const approvePaymentEndpoint = APPROVE_PAYMENT_ENDPOINT.replace(':id', aCancelledPaymentId);
+
+            const res = await request(app)
+                .put(approvePaymentEndpoint)
+                .set('Authorization', 'bearer ' + validUserToken);
+            assert.equal(res.statusCode, StatusCodes.BAD_REQUEST);
+
+            const errorResponse : ErrorResponseObject = res.body;
+            assert.equal(errorResponse.code, ERROR_CANNOT_APPROVE_CODE);
+            assert.equal(errorResponse.message, ERROR_CANNOT_APPROVE_MESSAGE);
+        })
+
+        it('should return cannot cancel error', async () => {
+            const cancelPaymentEndpoint = CANCEL_PAYMENT_ENDPOINT.replace(':id', anApprovedPaymentId);
+
+            const res = await request(app)
+                .put(cancelPaymentEndpoint)
+                .set('Authorization', 'bearer ' + validUserToken);
+            assert.equal(res.statusCode, StatusCodes.BAD_REQUEST);
+
+            const errorResponse : ErrorResponseObject = res.body;
+            assert.equal(errorResponse.code, ERROR_CANNOT_CANCEL_CODE);
+            assert.equal(errorResponse.message, ERROR_CANNOT_CANCEL_MESSAGE);
         })
 
     })

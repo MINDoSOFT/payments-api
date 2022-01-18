@@ -200,6 +200,12 @@ export class PaymentsController {
           message: ERROR_ALREADY_APPROVED_MESSAGE,
           details: []
         });
+      } else if (error instanceof PaymentNotFoundError) {
+        return res.status(StatusCodes.NOT_FOUND).json({
+          code: ERROR_NOT_FOUND_CODE,
+          message: ERROR_NOT_FOUND_MESSAGE,
+          details: []
+        });
       } else {
         return res
           .status(StatusCodes.INTERNAL_SERVER_ERROR)
@@ -250,6 +256,12 @@ export class PaymentsController {
         return res.status(StatusCodes.BAD_REQUEST).json({
           code: ERROR_ALREADY_CANCELLED_CODE,
           message: ERROR_ALREADY_CANCELLED_MESSAGE,
+          details: []
+        });
+      } else if (error instanceof PaymentNotFoundError) {
+        return res.status(StatusCodes.NOT_FOUND).json({
+          code: ERROR_NOT_FOUND_CODE,
+          message: ERROR_NOT_FOUND_MESSAGE,
           details: []
         });
       } else {
