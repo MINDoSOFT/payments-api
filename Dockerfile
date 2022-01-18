@@ -10,7 +10,8 @@ COPY ./public .
 
 EXPOSE 3000
 
+COPY ./.env .
 ENV VAULT_HOST=vault
 ENV MONGO_DB_HOST=mongodb_container
 
-CMD ["node", "index.js"]
+CMD ["node", "server.js"]
