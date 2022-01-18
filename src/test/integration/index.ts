@@ -1,12 +1,18 @@
-import { assert } from 'chai';
+import chai from "chai";
+chai.use(require('chai-uuid'));
 import { getApp, closeServer, getUserService, getJWTService } from '../../server';
 import {agent as request} from 'supertest';
 import { StatusCodes } from 'http-status-codes';
-import { AUTHENTICATE_ENDPOINT, GET_PAYMENTS_ENDPOINT, HELLO_WORLD_ENDPOINT } from '../../constants';
+import { AUTHENTICATE_ENDPOINT, CREATE_PAYMENT_ENDPOINT, GET_PAYMENTS_ENDPOINT, HELLO_WORLD_ENDPOINT } from '../../constants';
 import { MISSING_USERNAME_OR_PASSWORD_MESSAGE, WRONG_USERNAME_OR_PASSWORD_MESSAGE } from '../../controllers/authenticate-controller';
 import { AuthenticateResponseObject } from '../../pocos/authenticate-response-object';
 import { ErrorResponseObject } from '../../pocos/error-response-object';
 import { ERROR_AUTH_TOKEN_EXPIRED_CODE, ERROR_AUTH_TOKEN_EXPIRED_MESSAGE, ERROR_UNAUTHORIZED_CODE, ERROR_UNAUTHORIZED_MESSAGE, ERROR_VALIDATION_CODE, ERROR_VALIDATION_MESSAGE } from '../../enums/api-error-codes';
+import { PaymentObject } from '../../pocos/payment-object';
+import { assertCreatedPayment, assertMissingPaymentPropertyError, assertMissingPaymentPropertiesError } from "./payment-helper";
+import { string } from "zod";
+
+const assert = chai.assert;
 
 let app = getApp();
 
@@ -22,9 +28,50 @@ describe('Payments API Integration Tests', () => {
         plaintextPassword: 'aPasswordForThisUser'
     }
 
+    const aTestPayment = {
+        payeeId: 'cffd7c1f-e158-4c5a-97b8-7735dd56eb7a',
+        payerId: '7e916836-0a91-4ee0-be2d-3ccebdcd7483',
+        paymentSystem: 'ingenico',
+        paymentMethod: 'mastercard',
+        amount: 10.25,
+        currency: 'USD',
+        comment: 'Salary for March 2021'
+    }    
+
+    const aPaymentWithAmountAsString = {
+        payeeId: 'cffd7c1f-e158-4c5a-97b8-7735dd56eb7b',
+        payerId: '7e916836-0a91-4ee0-be2d-3ccebdcd7484',
+        paymentSystem: 'ingenico',
+        paymentMethod: 'mastercard',
+        amount: 'ABC',
+        currency: 'USD',
+        comment: 'Salary for April 2021'
+    }
+
+    const aSecondTestPayment = {
+        payeeId: '96313259-2c55-436c-964c-cf705a7c7425',
+        payerId: 'aab770fd-d5e0-4110-a484-b8ff978c1402',
+        paymentSystem: 'ingenico',
+        paymentMethod: 'visa',
+        amount: 35,
+        currency: 'EUR',
+        comment: 'A really large description to test how much the maximum length of a description can be.'
+    }
+
+    let validUserToken : string;
+
+    async function getUserToken() : Promise<string> {
+        const res = await request(app)
+            .post(AUTHENTICATE_ENDPOINT)
+            .send({ username: aUserForTesting.username, password : aUserForTesting.plaintextPassword });
+        const authenticateResponse : AuthenticateResponseObject = res.body;
+        return authenticateResponse.authToken;
+    }
+
     before(done => {
-    app.on("paymentsAPIStarted", function(){
-            getUserService().addUserForTesting(aUserForTesting);
+    app.on("paymentsAPIStarted", async function(){
+            await getUserService().addUserForTesting(aUserForTesting);
+            validUserToken = await getUserToken();
             done();
         });
     });
@@ -180,6 +227,139 @@ describe('Payments API Integration Tests', () => {
             const errorResponse : ErrorResponseObject = res.body;
             assert.equal(errorResponse.code, ERROR_AUTH_TOKEN_EXPIRED_CODE);
             assert.equal(errorResponse.message, ERROR_AUTH_TOKEN_EXPIRED_MESSAGE);
+        })
+
+    })
+
+    describe('Payments Integration Tests', () => {
+
+        it('without any payments should return empty array', async () => {
+            const res = await request(app)
+                .get(GET_PAYMENTS_ENDPOINT)
+                .set('Authorization', 'bearer ' + validUserToken);
+            assert.equal(res.statusCode, StatusCodes.OK);
+
+            assert.isArray(res.body);
+            assert.lengthOf(res.body, 0);
+        })
+
+        it('create a payment should return ok', async () => {
+            const res = await request(app)
+                .post(CREATE_PAYMENT_ENDPOINT)
+                .set('Authorization', 'bearer ' + validUserToken)
+                .send(aTestPayment);
+            assert.equal(res.statusCode, StatusCodes.CREATED);
+
+            const payment : PaymentObject = res.body;
+            
+            assertCreatedPayment(aTestPayment, payment);
+        })
+
+        it('should return exactly one payment', async () => {
+            const res = await request(app)
+                .get(GET_PAYMENTS_ENDPOINT)
+                .set('Authorization', 'bearer ' + validUserToken);
+            assert.equal(res.statusCode, StatusCodes.OK);
+
+            assert.isArray(res.body);
+            assert.lengthOf(res.body, 1);
+
+            const payments : PaymentObject[] = res.body;
+
+            assertCreatedPayment(aTestPayment, payments[0]);
+        })
+
+        it('missing payeeId should return error', async () => {
+            let paymentMissingPayeeId = { ...aTestPayment };
+            paymentMissingPayeeId.payeeId = '';
+            const res = await request(app)
+                .post(CREATE_PAYMENT_ENDPOINT)
+                .set('Authorization', 'bearer ' + validUserToken)
+                .send(paymentMissingPayeeId);
+            assert.equal(res.statusCode, StatusCodes.BAD_REQUEST);
+
+            const errorResponse : ErrorResponseObject = res.body;
+            assertMissingPaymentPropertyError('payeeId', 'Invalid uuid', errorResponse);
+        })
+
+        it('wrong payerId should return error', async () => {
+            let paymentMissingPayerId = { ...aTestPayment };
+            paymentMissingPayerId.payerId = '1234-abcd';
+            const res = await request(app)
+                .post(CREATE_PAYMENT_ENDPOINT)
+                .set('Authorization', 'bearer ' + validUserToken)
+                .send(paymentMissingPayerId);
+            assert.equal(res.statusCode, StatusCodes.BAD_REQUEST);
+
+            const errorResponse : ErrorResponseObject = res.body;
+            assertMissingPaymentPropertyError('payerId', 'Invalid uuid', errorResponse);
+        })
+
+        it('empty paymentMethod should return error', async () => {
+            let paymentEmptyPaymentMethod = { ...aTestPayment };
+            paymentEmptyPaymentMethod.paymentMethod = '';
+            const res = await request(app)
+                .post(CREATE_PAYMENT_ENDPOINT)
+                .set('Authorization', 'bearer ' + validUserToken)
+                .send(paymentEmptyPaymentMethod);
+            assert.equal(res.statusCode, StatusCodes.BAD_REQUEST);
+
+            const errorResponse : ErrorResponseObject = res.body;
+            assertMissingPaymentPropertyError('paymentMethod', 'Should be at least 1 characters', errorResponse);
+        })
+
+        it('empty paymentSystem and empty currency should return error with multiple details', async () => {
+            let paymentEmptyPaymentSystemAndCurrency = { ...aTestPayment };
+            paymentEmptyPaymentSystemAndCurrency.paymentSystem = '';
+            paymentEmptyPaymentSystemAndCurrency.currency = '';
+            const res = await request(app)
+                .post(CREATE_PAYMENT_ENDPOINT)
+                .set('Authorization', 'bearer ' + validUserToken)
+                .send(paymentEmptyPaymentSystemAndCurrency);
+            assert.equal(res.statusCode, StatusCodes.BAD_REQUEST);
+
+            const errorResponse : ErrorResponseObject = res.body;
+            assertMissingPaymentPropertiesError('paymentSystem', 'Should be at least 1 characters', 
+                'currency', 'Should be at least 1 characters', 
+                errorResponse);
+        })
+
+        it('wrong amount should return error', async () => {
+            const res = await request(app)
+                .post(CREATE_PAYMENT_ENDPOINT)
+                .set('Authorization', 'bearer ' + validUserToken)
+                .send(aPaymentWithAmountAsString);
+            assert.equal(res.statusCode, StatusCodes.BAD_REQUEST);
+
+            const errorResponse : ErrorResponseObject = res.body;
+            assertMissingPaymentPropertyError('amount', 'Expected number, received string', errorResponse);
+        })
+
+        it('create a second payment should return ok', async () => {
+            const res = await request(app)
+                .post(CREATE_PAYMENT_ENDPOINT)
+                .set('Authorization', 'bearer ' + validUserToken)
+                .send(aSecondTestPayment);
+            assert.equal(res.statusCode, StatusCodes.CREATED);
+
+            const payment : PaymentObject = res.body;
+            
+            assertCreatedPayment(aSecondTestPayment, payment);
+        })
+
+        it('should return exactly two payments', async () => {
+            const res = await request(app)
+                .get(GET_PAYMENTS_ENDPOINT)
+                .set('Authorization', 'bearer ' + validUserToken);
+            assert.equal(res.statusCode, StatusCodes.OK);
+
+            assert.isArray(res.body);
+            assert.lengthOf(res.body, 2);
+
+            const payments : PaymentObject[] = res.body;
+
+            assertCreatedPayment(aTestPayment, payments[0]);
+            assertCreatedPayment(aSecondTestPayment, payments[1]);
         })
 
     })
