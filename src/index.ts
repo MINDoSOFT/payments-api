@@ -17,56 +17,103 @@ import { JWTService } from './services/jwt-service';
 import { PaymentService } from './services/payment-service';
 import { MongoService } from './services/mongo-service';
 
+export class Index {
+  private static instance: Index;
 
-
-const expressJwtHandler = expressjwt({
-  secret: JWT_SINGING_KEY,
-  algorithms: ['HS256']
-});
-
-export const app = express();
-
-export function setupRoutes(  
-  mongoService: MongoService) {
-
-  app.use(bodyParser.json());
-  app.use((_req, _res, next) => RequestContext.create(mongoService.getEntityManager(), next));
-
-  app.get('/', (_req: express.Request, res: express.Response) => {
-    return res.status(StatusCodes.OK).send('Hello World!');
+  private mongoService : MongoService | undefined;
+  private userService : UserService | undefined;
+  private jwtService : JWTService | undefined;
+  private paymentService : PaymentService | undefined;
+  private app = express();
+  private expressJwtHandler = expressjwt({
+    secret: JWT_SINGING_KEY,
+    algorithms: ['HS256']
   });
 
-  const userService = new UserService(mongoService);
-  const jwtService = new JWTService(userService);
-  const paymentService = new PaymentService(mongoService);
+  private authenticateController : AuthenticateController | undefined;
+  private paymentsController : PaymentsController | undefined;
 
-  const authenticateController = new AuthenticateController(
-    userService,
-    jwtService
-  );
+  private constructor() {
+    
+  }
 
-  app.post('/v1/authenticate/', authenticateController.authenticateUser);
+  public static getInstance(): Index {
+    if (!Index.instance) {
+      Index.instance = new Index();
+    }
 
-  const paymentsController = new PaymentsController(paymentService);
+    return Index.instance;
+  }
 
-  app.get('/v1/payments', expressJwtHandler, paymentsController.getPayments);
+  init = (mongoService: MongoService) => {
+    this.mongoService = mongoService;
+    this.userService = new UserService(mongoService);
+    this.jwtService = new JWTService(this.userService);
+    this.paymentService = new PaymentService(mongoService);
 
-  app.post('/v1/payments', expressJwtHandler, paymentsController.createPayment);
+    this.authenticateController = new AuthenticateController(
+      this.userService,
+      this.jwtService
+    );
 
-  app.get('/v1/payment/:id', expressJwtHandler, paymentsController.getPayment);
+    this.paymentsController = new PaymentsController(this.paymentService);
+  }
 
-  app.put(
-    '/v1/payment/:id/approve',
-    expressJwtHandler,
-    paymentsController.approvePayment
-  );
+  setupRoutes = () => {
+    let mongoService : MongoService;
 
-  app.put(
-    '/v1/payment/:id/cancel',
-    expressJwtHandler,
-    paymentsController.cancelPayment
-  );
+    if (!this.mongoService) {
+      throw new Error('Mongo service is undefined');
+    } else {
+      mongoService = this.mongoService;
+    }
+    if (!this.authenticateController) throw new Error('Authenticate controller is undefined');
+    if (!this.paymentsController) throw new Error('Payments controller is undefined');
 
-  app.use(authenticateController.handleAuthenticationError);
+    this.app.use(bodyParser.json());
+    this.app.use((_req, _res, next) => RequestContext.create(mongoService.getEntityManager(), next));
+
+    this.app.get('/', (_req: express.Request, res: express.Response) => {
+      return res.status(StatusCodes.OK).send('Hello World!');
+    });
+
+    this.app.post('/v1/authenticate', this.authenticateController.authenticateUser);
+
+    this.app.get('/v1/payments', this.expressJwtHandler, this.paymentsController.getPayments);
+
+    this.app.post('/v1/payments', this.expressJwtHandler, this.paymentsController.createPayment);
+
+    this.app.get('/v1/payment/:id', this.expressJwtHandler, this.paymentsController.getPayment);
+
+    this.app.put(
+      '/v1/payment/:id/approve',
+      this.expressJwtHandler,
+      this.paymentsController.approvePayment
+    );
+
+    this.app.put(
+      '/v1/payment/:id/cancel',
+      this.expressJwtHandler,
+      this.paymentsController.cancelPayment
+    );
+
+    this.app.use(this.authenticateController.handleAuthenticationError);
 
   }
+
+  getApp = () => {
+    return this.app;
+  }
+
+  getUserService = () => {
+    let userService : UserService;
+
+    if (!this.userService) {
+      throw new Error('User service is undefined');
+    } else {
+      userService = this.userService;
+    }
+    return this.userService;
+  }
+
+}
