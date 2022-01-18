@@ -3,6 +3,7 @@ import { ERROR_VALIDATION_CODE, ERROR_VALIDATION_MESSAGE } from "../../enums/api
 import { ErrorResponseObject } from "../../pocos/error-response-object";
 chai.use(require('chai-uuid'));
 import { CreatePaymentObject, PaymentObject } from '../../pocos/payment-object';
+import { PaymentStatusEnum } from "../../schemas/payment-schema";
 
 const assert = chai.assert;
 
@@ -18,11 +19,26 @@ export function assertCreatedPayment(paymentToCreate : CreatePaymentObject, crea
     assert.isNotEmpty(createdPayment.id);
     assert.isNotEmpty(createdPayment.created);
     assert.isNotEmpty(createdPayment.updated);
+    assert.equal(createdPayment.status, PaymentStatusEnum.enum.created);
 
     assert.uuid(createdPayment.id);
 }
 
-export function assertMissingPaymentPropertyError(propertyName : string, validationMessage: string, errorResponse : ErrorResponseObject) {
+export function assertPayment(actualPayment : PaymentObject, expectedPayment : PaymentObject) {
+    assert.equal(actualPayment.payeeId, expectedPayment.payeeId);
+    assert.equal(actualPayment.payerId, expectedPayment.payerId);
+    assert.equal(actualPayment.paymentMethod, expectedPayment.paymentMethod);
+    assert.equal(actualPayment.paymentSystem, expectedPayment.paymentSystem);
+    assert.equal(actualPayment.amount, expectedPayment.amount);
+    assert.equal(actualPayment.currency, expectedPayment.currency);
+    assert.equal(actualPayment.comment, expectedPayment.comment);
+    assert.equal(actualPayment.id, expectedPayment.id);
+    assert.equal(actualPayment.created, expectedPayment.created);
+    assert.equal(actualPayment.updated, expectedPayment.updated);
+    assert.equal(actualPayment.status, expectedPayment.status);
+}
+
+export function assertMissingPropertyError(propertyName : string, validationMessage: string, errorResponse : ErrorResponseObject) {
     assert.equal(errorResponse.code, ERROR_VALIDATION_CODE);
     assert.equal(errorResponse.message, ERROR_VALIDATION_MESSAGE);
 

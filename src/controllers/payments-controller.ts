@@ -9,6 +9,8 @@ import {
   ERROR_CANNOT_APPROVE_MESSAGE,
   ERROR_CANNOT_CANCEL_CODE,
   ERROR_CANNOT_CANCEL_MESSAGE,
+  ERROR_NOT_FOUND_CODE,
+  ERROR_NOT_FOUND_MESSAGE,
   ERROR_VALIDATION_CODE,
   ERROR_VALIDATION_MESSAGE
 } from '../enums/api-error-codes';
@@ -16,7 +18,8 @@ import {
   PaymentAlreadyApprovedError,
   PaymentAlreadyCancelledError,
   PaymentHasBeenApprovedError,
-  PaymentHasBeenCancelledError
+  PaymentHasBeenCancelledError,
+  PaymentNotFoundError
 } from '../errors/payment-service-error';
 import { ErrorResponse } from '../interfaces/routes/error';
 import {
@@ -140,6 +143,13 @@ export class PaymentsController {
       const resPayment = getPaymentOutput.payment;
       return res.status(StatusCodes.OK).json(resPayment);
     } catch (error) {
+      if (error instanceof PaymentNotFoundError) {
+        return res.status(StatusCodes.NOT_FOUND).json({
+          code: ERROR_NOT_FOUND_CODE,
+          message: ERROR_NOT_FOUND_MESSAGE,
+          details: []
+        });
+      }
       return res
         .status(StatusCodes.INTERNAL_SERVER_ERROR)
         .send(`Error loading payment '${paymentId}':` + error);

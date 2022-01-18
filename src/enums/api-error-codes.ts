@@ -16,3 +16,5 @@ export const ERROR_ALREADY_APPROVED_MESSAGE =
 export const ERROR_ALREADY_CANCELLED_CODE = 'ERR_ALREADY_CANCELLED';
 export const ERROR_ALREADY_CANCELLED_MESSAGE =
   'This payment was already cancelled';
+export const ERROR_NOT_FOUND_CODE = 'ERR_NOT_FOUND';
+export const ERROR_NOT_FOUND_MESSAGE = 'The resource you have requested cannot be found';

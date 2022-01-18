@@ -3,13 +3,13 @@ chai.use(require('chai-uuid'));
 import { getApp, closeServer, getUserService, getJWTService } from '../../server';
 import {agent as request} from 'supertest';
 import { StatusCodes } from 'http-status-codes';
-import { AUTHENTICATE_ENDPOINT, CREATE_PAYMENT_ENDPOINT, GET_PAYMENTS_ENDPOINT, HELLO_WORLD_ENDPOINT } from '../../constants';
+import { AUTHENTICATE_ENDPOINT, CREATE_PAYMENT_ENDPOINT, GET_PAYMENTS_ENDPOINT, GET_PAYMENT_ENDPOINT, HELLO_WORLD_ENDPOINT } from '../../constants';
 import { MISSING_USERNAME_OR_PASSWORD_MESSAGE, WRONG_USERNAME_OR_PASSWORD_MESSAGE } from '../../controllers/authenticate-controller';
 import { AuthenticateResponseObject } from '../../pocos/authenticate-response-object';
 import { ErrorResponseObject } from '../../pocos/error-response-object';
-import { ERROR_AUTH_TOKEN_EXPIRED_CODE, ERROR_AUTH_TOKEN_EXPIRED_MESSAGE, ERROR_UNAUTHORIZED_CODE, ERROR_UNAUTHORIZED_MESSAGE, ERROR_VALIDATION_CODE, ERROR_VALIDATION_MESSAGE } from '../../enums/api-error-codes';
+import { ERROR_AUTH_TOKEN_EXPIRED_CODE, ERROR_AUTH_TOKEN_EXPIRED_MESSAGE, ERROR_NOT_FOUND_CODE, ERROR_NOT_FOUND_MESSAGE, ERROR_UNAUTHORIZED_CODE, ERROR_UNAUTHORIZED_MESSAGE, ERROR_VALIDATION_CODE, ERROR_VALIDATION_MESSAGE } from '../../enums/api-error-codes';
 import { PaymentObject } from '../../pocos/payment-object';
-import { assertCreatedPayment, assertMissingPaymentPropertyError, assertMissingPaymentPropertiesError } from "./payment-helper";
+import { assertCreatedPayment, assertMissingPropertyError, assertMissingPaymentPropertiesError, assertPayment } from "./payment-helper";
 import { string } from "zod";
 
 const assert = chai.assert;
@@ -36,7 +36,9 @@ describe('Payments API Integration Tests', () => {
         amount: 10.25,
         currency: 'USD',
         comment: 'Salary for March 2021'
-    }    
+    }
+
+    let aCreatedTestPayment : PaymentObject;
 
     const aPaymentWithAmountAsString = {
         payeeId: 'cffd7c1f-e158-4c5a-97b8-7735dd56eb7b',
@@ -253,6 +255,8 @@ describe('Payments API Integration Tests', () => {
             const payment : PaymentObject = res.body;
             
             assertCreatedPayment(aTestPayment, payment);
+
+            aCreatedTestPayment = payment;
         })
 
         it('should return exactly one payment', async () => {
@@ -279,7 +283,7 @@ describe('Payments API Integration Tests', () => {
             assert.equal(res.statusCode, StatusCodes.BAD_REQUEST);
 
             const errorResponse : ErrorResponseObject = res.body;
-            assertMissingPaymentPropertyError('payeeId', 'Invalid uuid', errorResponse);
+            assertMissingPropertyError('payeeId', 'Invalid uuid', errorResponse);
         })
 
         it('wrong payerId should return error', async () => {
@@ -292,7 +296,7 @@ describe('Payments API Integration Tests', () => {
             assert.equal(res.statusCode, StatusCodes.BAD_REQUEST);
 
             const errorResponse : ErrorResponseObject = res.body;
-            assertMissingPaymentPropertyError('payerId', 'Invalid uuid', errorResponse);
+            assertMissingPropertyError('payerId', 'Invalid uuid', errorResponse);
         })
 
         it('empty paymentMethod should return error', async () => {
@@ -305,7 +309,7 @@ describe('Payments API Integration Tests', () => {
             assert.equal(res.statusCode, StatusCodes.BAD_REQUEST);
 
             const errorResponse : ErrorResponseObject = res.body;
-            assertMissingPaymentPropertyError('paymentMethod', 'Should be at least 1 characters', errorResponse);
+            assertMissingPropertyError('paymentMethod', 'Should be at least 1 characters', errorResponse);
         })
 
         it('empty paymentSystem and empty currency should return error with multiple details', async () => {
@@ -332,7 +336,7 @@ describe('Payments API Integration Tests', () => {
             assert.equal(res.statusCode, StatusCodes.BAD_REQUEST);
 
             const errorResponse : ErrorResponseObject = res.body;
-            assertMissingPaymentPropertyError('amount', 'Expected number, received string', errorResponse);
+            assertMissingPropertyError('amount', 'Expected number, received string', errorResponse);
         })
 
         it('create a second payment should return ok', async () => {
@@ -360,6 +364,50 @@ describe('Payments API Integration Tests', () => {
 
             assertCreatedPayment(aTestPayment, payments[0]);
             assertCreatedPayment(aSecondTestPayment, payments[1]);
+        })
+
+        it('should get the payment', async () => {
+            const getPaymentEndpoint = GET_PAYMENT_ENDPOINT.replace(':id', aCreatedTestPayment.id);
+
+            const res = await request(app)
+                .get(getPaymentEndpoint)
+                .set('Authorization', 'bearer ' + validUserToken);
+            assert.equal(res.statusCode, StatusCodes.OK);
+
+            assert.isObject(res.body);
+
+            const payment : PaymentObject = res.body;
+
+            assertPayment(payment, aCreatedTestPayment);
+        })
+
+        it('a missing payment id should get not found', async () => {
+            const aPaymentIdThatDoesNotExist = 'db6f7e77-ebc9-465b-ba70-d0431fe08f34';
+            const getPaymentEndpoint = GET_PAYMENT_ENDPOINT.replace(':id', aPaymentIdThatDoesNotExist);
+
+            const res = await request(app)
+                .get(getPaymentEndpoint)
+                .set('Authorization', 'bearer ' + validUserToken);
+            assert.equal(res.statusCode, StatusCodes.NOT_FOUND);
+
+            const errorResponse : ErrorResponseObject = res.body;
+            assert.equal(errorResponse.code, ERROR_NOT_FOUND_CODE);
+            assert.equal(errorResponse.message, ERROR_NOT_FOUND_MESSAGE);
+        })
+
+        it('a wrong payment id should return validation error', async () => {
+            const aWrongPaymentId = 'ABCD-1234';
+            const getPaymentEndpoint = GET_PAYMENT_ENDPOINT.replace(':id', aWrongPaymentId);
+
+            const res = await request(app)
+                .get(getPaymentEndpoint)
+                .set('Authorization', 'bearer ' + validUserToken);
+            assert.equal(res.statusCode, StatusCodes.BAD_REQUEST);
+
+            const errorResponse : ErrorResponseObject = res.body;
+            assert.equal(errorResponse.code, ERROR_VALIDATION_CODE);
+            assert.equal(errorResponse.message, ERROR_VALIDATION_MESSAGE);
+            assertMissingPropertyError('id', 'Invalid uuid', errorResponse);
         })
 
     })
