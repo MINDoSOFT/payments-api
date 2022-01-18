@@ -24,7 +24,7 @@ export class Index {
   private userService : UserService | undefined;
   private jwtService : JWTService | undefined;
   private paymentService : PaymentService | undefined;
-  private app = express();
+  private app;
   private expressJwtHandler = expressjwt({
     secret: JWT_SINGING_KEY,
     algorithms: ['HS256']
@@ -34,7 +34,7 @@ export class Index {
   private paymentsController : PaymentsController | undefined;
 
   private constructor() {
-    
+    this.app = express();
   }
 
   public static getInstance(): Index {
@@ -106,23 +106,15 @@ export class Index {
   }
 
   getUserService = () => {
-    let userService : UserService;
-
     if (!this.userService) {
       throw new Error('User service is undefined');
-    } else {
-      userService = this.userService;
     }
     return this.userService;
   }
 
   getJWTService = () => {
-    let jwtService : JWTService;
-
     if (!this.jwtService) {
       throw new Error('JWT service is undefined');
-    } else {
-      jwtService = this.jwtService;
     }
     return this.jwtService;
   }

@@ -1,7 +1,8 @@
 import chai from "chai";
+import chaiUuid = require('chai-uuid');
+chai.use(chaiUuid);
 import { ERROR_VALIDATION_CODE, ERROR_VALIDATION_MESSAGE } from "../../enums/api-error-codes";
 import { ErrorResponseObject } from "../../pocos/error-response-object";
-chai.use(require('chai-uuid'));
 import { CreatePaymentObject, PaymentObject } from '../../pocos/payment-object';
 import { PaymentStatusEnum } from "../../schemas/payment-schema";
 

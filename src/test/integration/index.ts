@@ -1,5 +1,6 @@
-import chai from "chai";
-chai.use(require('chai-uuid'));
+import chai from 'chai';
+import chaiUuid = require('chai-uuid');
+chai.use(chaiUuid);
 import { getApp, closeServer, getUserService, getJWTService } from '../../server';
 import {agent as request} from 'supertest';
 import { StatusCodes } from 'http-status-codes';
@@ -10,11 +11,10 @@ import { ErrorResponseObject } from '../../pocos/error-response-object';
 import { ERROR_ALREADY_APPROVED_CODE, ERROR_ALREADY_APPROVED_MESSAGE, ERROR_ALREADY_CANCELLED_CODE, ERROR_ALREADY_CANCELLED_MESSAGE, ERROR_AUTH_TOKEN_EXPIRED_CODE, ERROR_AUTH_TOKEN_EXPIRED_MESSAGE, ERROR_CANNOT_APPROVE_CODE, ERROR_CANNOT_APPROVE_MESSAGE, ERROR_CANNOT_CANCEL_CODE, ERROR_CANNOT_CANCEL_MESSAGE, ERROR_NOT_FOUND_CODE, ERROR_NOT_FOUND_MESSAGE, ERROR_UNAUTHORIZED_CODE, ERROR_UNAUTHORIZED_MESSAGE, ERROR_VALIDATION_CODE, ERROR_VALIDATION_MESSAGE } from '../../enums/api-error-codes';
 import { PaymentObject } from '../../pocos/payment-object';
 import { assertCreatedPayment, assertMissingPropertyError, assertMissingPaymentPropertiesError, assertPayment } from "./payment-helper";
-import { string } from "zod";
 
 const assert = chai.assert;
 
-let app = getApp();
+const app = getApp();
 
 describe('Payments API Integration Tests', () => {
 
@@ -281,7 +281,7 @@ describe('Payments API Integration Tests', () => {
         })
 
         it('missing payeeId should return error', async () => {
-            let paymentMissingPayeeId = { ...aTestPayment };
+            const paymentMissingPayeeId = { ...aTestPayment };
             paymentMissingPayeeId.payeeId = '';
             const res = await request(app)
                 .post(CREATE_PAYMENT_ENDPOINT)
@@ -294,12 +294,12 @@ describe('Payments API Integration Tests', () => {
         })
 
         it('wrong payerId should return error', async () => {
-            let paymentMissingPayerId = { ...aTestPayment };
-            paymentMissingPayerId.payerId = '1234-abcd';
+            const paymentWrongPayerId = { ...aTestPayment };
+            paymentWrongPayerId.payerId = '1234-abcd';
             const res = await request(app)
                 .post(CREATE_PAYMENT_ENDPOINT)
                 .set('Authorization', 'bearer ' + validUserToken)
-                .send(paymentMissingPayerId);
+                .send(paymentWrongPayerId);
             assert.equal(res.statusCode, StatusCodes.BAD_REQUEST);
 
             const errorResponse : ErrorResponseObject = res.body;
@@ -307,7 +307,7 @@ describe('Payments API Integration Tests', () => {
         })
 
         it('empty paymentMethod should return error', async () => {
-            let paymentEmptyPaymentMethod = { ...aTestPayment };
+            const paymentEmptyPaymentMethod = { ...aTestPayment };
             paymentEmptyPaymentMethod.paymentMethod = '';
             const res = await request(app)
                 .post(CREATE_PAYMENT_ENDPOINT)
@@ -320,7 +320,7 @@ describe('Payments API Integration Tests', () => {
         })
 
         it('empty paymentSystem and empty currency should return error with multiple details', async () => {
-            let paymentEmptyPaymentSystemAndCurrency = { ...aTestPayment };
+            const paymentEmptyPaymentSystemAndCurrency = { ...aTestPayment };
             paymentEmptyPaymentSystemAndCurrency.paymentSystem = '';
             paymentEmptyPaymentSystemAndCurrency.currency = '';
             const res = await request(app)

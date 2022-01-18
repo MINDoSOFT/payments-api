@@ -40,7 +40,7 @@ if (process.env.MONGO_DB_TYPE && process.env.MONGO_DB_TYPE == 'INMEMORY') {
 
 let mongoService : MongoService;
 
-let index = Index.getInstance();
+const index = Index.getInstance();
 
 Promise.resolve(vaultService.init()).
 then(() => 
