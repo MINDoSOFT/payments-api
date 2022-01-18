@@ -116,4 +116,15 @@ export class Index {
     return this.userService;
   }
 
+  getJWTService = () => {
+    let jwtService : JWTService;
+
+    if (!this.jwtService) {
+      throw new Error('JWT service is undefined');
+    } else {
+      jwtService = this.jwtService;
+    }
+    return this.jwtService;
+  }
+
 }

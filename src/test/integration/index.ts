@@ -1,12 +1,12 @@
 import { assert } from 'chai';
-import { getApp, closeServer, getUserService } from '../../server';
+import { getApp, closeServer, getUserService, getJWTService } from '../../server';
 import {agent as request} from 'supertest';
 import { StatusCodes } from 'http-status-codes';
-import { AUTHENTICATE_ENDPOINT, HELLO_WORLD_ENDPOINT } from '../../constants';
+import { AUTHENTICATE_ENDPOINT, GET_PAYMENTS_ENDPOINT, HELLO_WORLD_ENDPOINT } from '../../constants';
 import { MISSING_USERNAME_OR_PASSWORD_MESSAGE, WRONG_USERNAME_OR_PASSWORD_MESSAGE } from '../../controllers/authenticate-controller';
 import { AuthenticateResponseObject } from '../../pocos/authenticate-response-object';
 import { ErrorResponseObject } from '../../pocos/error-response-object';
-import { ERROR_VALIDATION_CODE, ERROR_VALIDATION_MESSAGE } from '../../enums/api-error-codes';
+import { ERROR_AUTH_TOKEN_EXPIRED_CODE, ERROR_AUTH_TOKEN_EXPIRED_MESSAGE, ERROR_UNAUTHORIZED_CODE, ERROR_UNAUTHORIZED_MESSAGE, ERROR_VALIDATION_CODE, ERROR_VALIDATION_MESSAGE } from '../../enums/api-error-codes';
 
 let app = getApp();
 
@@ -157,21 +157,31 @@ describe('Payments API Integration Tests', () => {
         })
 
     })
-/*
-    describe('List Payments Integration Tests', () => {
 
-        const listPaymentsEndpoint = '/payments';
+    describe('Unauthorised user Integration Tests', () => {
 
-        it('should return an empty list', async () => {
-            const res = await request(app).get(listPaymentsEndpoint);
-            assert.equal(res.body, '[]');
+        it('when user is not authorised should return error', async () => {
+            const res = await request(app).get(GET_PAYMENTS_ENDPOINT);
+            assert.equal(res.statusCode, StatusCodes.UNAUTHORIZED);
+
+            const errorResponse : ErrorResponseObject = res.body;
+            assert.equal(errorResponse.code, ERROR_UNAUTHORIZED_CODE);
+            assert.equal(errorResponse.message, ERROR_UNAUTHORIZED_MESSAGE);
         })
 
-        it('should return status ok', async () => {
-            const res = await request(app).get(listPaymentsEndpoint);
-            assert.equal(res.statusCode, StatusCodes.OK);
+        it('when user provides expired token should return error', async () => {
+            const userExpiredJWTOutput = await getJWTService().getUserExpiredJWT({ username : aUserForTesting.username });
+
+            const res = await request(app)
+                .get(GET_PAYMENTS_ENDPOINT)
+                .set('Authorization', 'bearer ' + userExpiredJWTOutput.token);
+            assert.equal(res.statusCode, StatusCodes.UNAUTHORIZED);
+
+            const errorResponse : ErrorResponseObject = res.body;
+            assert.equal(errorResponse.code, ERROR_AUTH_TOKEN_EXPIRED_CODE);
+            assert.equal(errorResponse.message, ERROR_AUTH_TOKEN_EXPIRED_MESSAGE);
         })
 
     })
-*/
+
 })

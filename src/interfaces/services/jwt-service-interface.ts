@@ -6,3 +6,12 @@ export interface getUserJWTOutput {
   token: string;
   expiresIn: string;
 }
+
+export interface getUserExpiredJWTInput {
+  username: string;
+}
+
+export interface getUserExpiredJWTOutput {
+  token: string;
+  expiresIn: string;
+}

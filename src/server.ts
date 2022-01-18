@@ -77,6 +77,10 @@ export function getUserService() {
     return index.getUserService();
 }
 
+export function getJWTService() {
+    return index.getJWTService();
+}
+
 export function closeServer() {
     console.log('Closing server...');
     if (mongoService) mongoService.closeOrm();

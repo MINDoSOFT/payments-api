@@ -3,9 +3,12 @@ import { UserService } from './user-service';
 import jsonwebtoken = require('jsonwebtoken');
 import { JWT_SINGING_KEY } from '../constants';
 import {
+  getUserExpiredJWTInput,
+  getUserExpiredJWTOutput,
   getUserJWTInput,
   getUserJWTOutput
 } from '../interfaces/services/jwt-service-interface';
+import { User } from '../entities/User';
 
 export class JWTService {
   private userService: UserService;
@@ -14,14 +17,7 @@ export class JWTService {
     this.userService = userService;
   }
 
-  getUserJWT = async (input: getUserJWTInput): Promise<getUserJWTOutput> => {
-    const getUserOutput = await this.userService.getUser({
-      username: input.username
-    });
-    const user = getUserOutput.user;
-
-    const expiresIn = '1h';
-
+  private async getJWT (user: User, expiresIn: string) : Promise<string> {
     const userJWT: UserJWT = {
       userId: user._id.toString()
     };
@@ -29,6 +25,28 @@ export class JWTService {
     const token = await jsonwebtoken.sign(userJWT, JWT_SINGING_KEY, {
       expiresIn: expiresIn
     });
+
+    return token;
+  }
+
+  getUserJWT = async (input: getUserJWTInput): Promise<getUserJWTOutput> => {
+    const getUserOutput = await this.userService.getUser({
+      username: input.username
+    });
+    const expiresIn = '1h';
+
+    const token = await this.getJWT(getUserOutput.user, expiresIn);
+
+    return { token, expiresIn };
+  };
+
+  getUserExpiredJWT = async (input: getUserExpiredJWTInput): Promise<getUserExpiredJWTOutput> => {
+    const getUserOutput = await this.userService.getUser({
+      username: input.username
+    });
+    const expiresIn = '-1h';
+
+    const token = await this.getJWT(getUserOutput.user, expiresIn);
 
     return { token, expiresIn };
   };
