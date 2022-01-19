@@ -1,6 +1,6 @@
 import { Connection, EntityManager, IDatabaseDriver, MikroORM } from '@mikro-orm/core';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { initMongoOutput } from '../interfaces/services/mongo-service-interface';
+import { initMongoInput, initMongoOutput } from '../interfaces/services/mongo-service-interface';
 import realMongoOrmOptions from '../mikro-orm.config';
 import { Options } from '@mikro-orm/core';
 import { MongoNotInitialisedError } from '../errors/mongo-service-error';
@@ -14,22 +14,34 @@ export enum MongoServiceType {
 }
 
 export class MongoService {
-    private mongoType: MongoServiceType;
-    private ormOptions: Options;
-    private orm: MikroORM | void;
-    private mongoInMemoryServer: MongoMemoryServer | void;
+    private static instance: MongoService;
 
-    constructor (mongoType: MongoServiceType, username: string, password: string) {
-        this.mongoType = mongoType;
-        this.ormOptions = realMongoOrmOptions;
-        this.ormOptions.user = username;
-        this.ormOptions.password = password;
-        this.orm = undefined;
-        this.mongoInMemoryServer = undefined;
+    private mongoType: MongoServiceType | undefined;
+    private ormOptions: Options | undefined;
+    private orm: MikroORM | undefined;
+    private mongoInMemoryServer: MongoMemoryServer | undefined;
+
+    private constructor () {
+        this.mongoType = undefined; // To bypass the empty constructor error
     }
 
-    init = async (): Promise<initMongoOutput> => {
+    public static getInstance(): MongoService {
+        if (!MongoService.instance) {
+            MongoService.instance = new MongoService();
+        }
+
+        return MongoService.instance;
+    }
+
+    init = async (input: initMongoInput): Promise<initMongoOutput> => {
         try {
+            this.mongoType = input.mongoType;
+            this.ormOptions = realMongoOrmOptions;
+            this.ormOptions.user = input.username;
+            this.ormOptions.password = input.password;
+            this.orm = undefined;
+            this.mongoInMemoryServer = undefined;
+
             if (this.mongoType == MongoServiceType.INMEMORY) {
                 this.mongoInMemoryServer = await MongoMemoryServer.create({ instance: { port: 37575, auth: false }});
                 const uri = this.mongoInMemoryServer.getUri();

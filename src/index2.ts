@@ -6,13 +6,11 @@ if (dotenvResult.error) {
     throw dotenvResult.error;
 }
 
-import * as http from 'http';
 import { MockVaultService, VaultService } from './services/vault-service';
 import { readFileSync } from 'fs';
 
 import { MongoService, MongoServiceType } from './services/mongo-service';
 import { VaultServiceInterface } from './interfaces/services/vault-service-interface';
-import { Index } from '.';
 
 let vaultService : VaultServiceInterface;
 
@@ -40,49 +38,23 @@ if (process.env.MONGO_DB_TYPE && process.env.MONGO_DB_TYPE == 'INMEMORY') {
 
 const mongoService = MongoService.getInstance();
 
-const index = Index.getInstance();
+let initInput : initMongoInput;
+
+import { initMongoInput } from './interfaces/services/mongo-service-interface';
 
 Promise.resolve(vaultService.init()).
 then(() => 
     Promise.resolve(vaultService.getCredentials({path : 'mongodb/creds/payments-api-client'})).
     then((mongoDbCreds) => {
-        mongoService.init({mongoType, username: mongoDbCreds.username, password: mongoDbCreds.password});
+        initInput = {mongoType, username: mongoDbCreds.username, password: mongoDbCreds.password};
     }).
-        then(() => {
-            index.init(mongoService);
-            index.setupRoutes();
-        })).
-        then(() => {
-            runServer();
-        });
-
-export let server: http.Server = http.createServer();
-
-async function runServer() {
-    const port = 3000;
-    const runningMessage = `Payments-api running at http://localhost:${port}`;
-    server = http.createServer(index.getApp());
-    server.listen(port, () => {
-        console.log(runningMessage);
-        index.getApp().emit("paymentsAPIStarted");
-    });
-}
-
-export function getApp() {
-    return index.getApp();
-}
-
-export function getUserService() {
-    return index.getUserService();
-}
-
-export function getJWTService() {
-    return index.getJWTService();
-}
-
-export function closeServer() {
-    console.log('Closing server...');
-    if (mongoService) mongoService.closeOrm();
-    if (server) server.close();
-    console.log('Server closed.');
-}
+        then(() => 
+        Promise.resolve(mongoService.init(initInput)).
+            then(() => {
+                import("./app").then(({ start }) => {
+                    // The dynamic import here is required to give a chance for MongoDB to init!
+                    start();
+                });
+            })
+        )
+);
