@@ -1,11 +1,11 @@
-import { User } from '../../entities/User';
+import { UserObject } from '../../pocos/user-object';
 
 export interface getUserInput {
   username: string;
 }
 
 export interface getUserOutput {
-  user: User;
+  user: UserObject;
 }
 
 export interface validateUserPasswordInput {

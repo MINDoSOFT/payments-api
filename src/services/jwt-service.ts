@@ -8,7 +8,7 @@ import {
   getUserJWTInput,
   getUserJWTOutput
 } from '../interfaces/services/jwt-service-interface';
-import { User } from '../entities/User';
+import { UserObject } from '../pocos/user-object';
 
 export class JWTService {
   private userService: UserService;
@@ -17,9 +17,9 @@ export class JWTService {
     this.userService = userService;
   }
 
-  private async getJWT (user: User, expiresIn: string) : Promise<string> {
+  private async getJWT (user: UserObject, expiresIn: string) : Promise<string> {
     const userJWT: UserJWT = {
-      userId: user._id.toString()
+      userId: user.id
     };
 
     const token = await jsonwebtoken.sign(userJWT, JWT_SINGING_KEY, {

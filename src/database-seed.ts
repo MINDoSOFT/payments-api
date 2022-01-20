@@ -6,6 +6,7 @@ import { VaultCredsResponse } from './interfaces/VaultCredsResponse.js';
 import ormOptions from './mikro-orm.config.js';
 
 import { readFileSync } from 'fs';
+import { CreateUserObject } from './pocos/user-object.js';
 
 const roleId = readFileSync('./vault-data/payments-api-role_id', 'utf8')
 const secretId = readFileSync('./vault-data/payments-api-secret_id', 'utf8')
@@ -40,7 +41,11 @@ const vaultOptions = {
   const username1 = 'serious_business';
 
   if ((await DI.userRepository.count({ username: username1 })) === 0) {
-    const user = new User(username1, 'suchPassw0rdSecure');
+    const userToCreate : CreateUserObject = {
+      username : username1,
+      plaintextPassword : 'suchPassw0rdSecure'
+    }
+    const user = new User(userToCreate);
     await DI.userRepository.persist(user).flush();
   } else {
     console.log(`User: ${username1} already exists.`);

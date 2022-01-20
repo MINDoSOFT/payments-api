@@ -1,5 +1,3 @@
-import { EntityRepository } from '@mikro-orm/core';
-import { User } from '../entities/User';
 import bcrypt = require('bcrypt');
 import {
   UserNotFoundError,
@@ -13,19 +11,18 @@ import {
   validateUserPasswordInput,
   validateUserPasswordOutput
 } from '../interfaces/services/user-service-interface';
-import { MongoService } from './mongo-service';
+import { IUserRepo } from '../repos/user-repo';
+import { CreateUserObject } from '../pocos/user-object';
 
 export class UserService {
-  private userRepository: EntityRepository<User>;
+  private userRepository: IUserRepo;
 
-  constructor(mongoService : MongoService) {
-    this.userRepository = mongoService.getUserRepository();
+  constructor(userRepository : IUserRepo) {
+    this.userRepository = userRepository;
   }
 
   getUser = async (input: getUserInput): Promise<getUserOutput> => {
-    const user = await this.userRepository.findOne({
-      username: input.username
-    });
+    const user = await this.userRepository.findByUsername(input.username);
 
     if (!user) throw new UserNotFoundError(input.username);
 
@@ -45,10 +42,13 @@ export class UserService {
   };
 
   addUserForTesting = async (input : addUserForTestingInput): Promise<addUserForTestingOutput> => {
-    if ((await this.userRepository.count({ username: input.username })) === 0) {
-      const user = new User(input.username, input.plaintextPassword);
-      await this.userRepository.persist(user).flush();
-      console.log(`Created user: ${input.username}.`);
+    if (! await this.userRepository.findByUsername(input.username)) {
+      const userToCreate : CreateUserObject = {
+        username : input.username,
+        plaintextPassword : input.plaintextPassword
+      }
+      const user = await this.userRepository.create(userToCreate);
+      console.log(`Created user: ${user.username}.`);
     } else {
       console.log(`User: ${input.username} already exists.`);
     }
