@@ -16,6 +16,7 @@ import { UserService } from './services/user-service';
 import { JWTService } from './services/jwt-service';
 import { PaymentService } from './services/payment-service';
 import { MongoService } from './services/mongo-service';
+import { MongoPaymentRepo } from './repos/mongo-payment-repo';
 
 export class Index {
   private static instance: Index;
@@ -29,6 +30,8 @@ export class Index {
     secret: JWT_SINGING_KEY,
     algorithms: ['HS256']
   });
+
+  private paymentRepo : MongoPaymentRepo | undefined;
 
   private authenticateController : AuthenticateController | undefined;
   private paymentsController : PaymentsController | undefined;
@@ -47,9 +50,12 @@ export class Index {
 
   init = (mongoService: MongoService) => {
     this.mongoService = mongoService;
+
+    this.paymentRepo = new MongoPaymentRepo(mongoService);
+
     this.userService = new UserService(mongoService);
     this.jwtService = new JWTService(this.userService);
-    this.paymentService = new PaymentService(mongoService);
+    this.paymentService = new PaymentService(this.paymentRepo);
 
     this.authenticateController = new AuthenticateController(
       this.userService,

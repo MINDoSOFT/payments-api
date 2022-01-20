@@ -1,6 +1,6 @@
 import { BaseEntity, Entity, PrimaryKey, Property } from '@mikro-orm/core';
 import { v4 } from 'uuid';
-import { CreatePaymentObject } from '../pocos/payment-object';
+import { CreatePaymentObject, PaymentObject } from '../pocos/payment-object';
 import {
   CreatePaymentSchema,
   PaymentStatusEnum
@@ -41,20 +41,31 @@ export class Payment extends BaseEntity<Payment, '_id'> {
   @Property({ onUpdate: () => new Date() })
   updatedAt: Date = new Date();
 
-  constructor(payment: CreatePaymentObject) {
+  public constructor(paymentToCreate: CreatePaymentObject) {
     super();
 
-    if (!payment) throw Error('Missing payment');
+    if (!paymentToCreate) throw Error('Missing payment');
 
-    CreatePaymentSchema.parse(payment);
+    CreatePaymentSchema.parse(paymentToCreate);
 
-    this.payeeId = payment.payeeId;
-    this.payerId = payment.payerId;
-    this.paymentSystem = payment.paymentSystem;
-    this.paymentMethod = payment.paymentMethod;
-    this.amount = payment.amount;
-    this.currency = payment.currency;
-    this.comment = payment.comment;
+    this.payeeId = paymentToCreate.payeeId;
+    this.payerId = paymentToCreate.payerId;
+    this.paymentSystem = paymentToCreate.paymentSystem;
+    this.paymentMethod = paymentToCreate.paymentMethod;
+    this.amount = paymentToCreate.amount;
+    this.currency = paymentToCreate.currency;
+    this.comment = paymentToCreate.comment;
+  }
+
+  public mapEntityToObject() : PaymentObject {
+    const paymentObject : PaymentObject = {
+      ...this,
+      id : this._id,
+      status : this.status,
+      created : this.createdAt,
+      updated : this.updatedAt
+    }
+    return paymentObject;
   }
 }
 

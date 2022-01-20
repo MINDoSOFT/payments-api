@@ -1,5 +1,3 @@
-import { EntityRepository } from '@mikro-orm/core';
-import { isPayment, Payment } from '../entities/Payment';
 import {
   PaymentAlreadyApprovedError,
   PaymentAlreadyCancelledError,
@@ -7,7 +5,6 @@ import {
   PaymentHasBeenCancelledError,
   PaymentNotFoundError
 } from '../errors/payment-service-error';
-import { MapPaymentEntityToPaymentObject } from '../interfaces/routes/payment';
 import {
   approvePaymentInput,
   approvePaymentOutput,
@@ -20,41 +17,37 @@ import {
   getPaymentsOutput
 } from '../interfaces/services/payment-service-interface';
 import { PaymentObject } from '../pocos/payment-object';
+import { IPaymentRepo } from '../repos/payment-repo';
 import { PaymentStatusEnum } from '../schemas/payment-schema';
-import { MongoService } from './mongo-service';
 
 export class PaymentService {
-  private paymentRepository: EntityRepository<Payment>;
+  private paymentRepository: IPaymentRepo;
 
-  constructor(mongoService : MongoService) {
-    this.paymentRepository = mongoService.getPaymentRepository();
+  constructor(paymentRepository : IPaymentRepo) {
+    this.paymentRepository = paymentRepository;
   }
 
   getPayments = async (): Promise<getPaymentsOutput> => {
-    const payments = await this.paymentRepository.findAll();
-    const paymentObjects: PaymentObject[] = [];
-    payments.forEach((payment) => {
-      paymentObjects.push(MapPaymentEntityToPaymentObject(payment));
-    });
-    return { payments: paymentObjects };
+
+    const payments = await this.paymentRepository.list();
+
+    return { payments };
   };
 
   createPayment = async (
     input: createPaymentInput
   ): Promise<createPaymentOutput> => {
-    const reqPayment = new Payment(input.payment);
 
-    await this.paymentRepository.persist(reqPayment).flush();
+    const paymentCreated = await this.paymentRepository.create(input.payment);
 
-    return { paymentId: reqPayment._id };
+    return { paymentId: paymentCreated.id };
   };
 
-  private getPaymentEntity = async (paymentId: string) => {
-    const resPayment = await this.paymentRepository.findOne({
-      _id: paymentId
-    });
+  private getPaymentObject = async (paymentId: string) => {
 
-    if (!isPayment(resPayment)) {
+    const resPayment = await this.paymentRepository.findById(paymentId);
+
+    if (!resPayment) {
       throw new PaymentNotFoundError(paymentId);
     }
 
@@ -62,21 +55,20 @@ export class PaymentService {
   };
 
   getPayment = async (input: getPaymentInput): Promise<getPaymentOutput> => {
-    const paymentEntity = await this.getPaymentEntity(input.paymentId);
-    const paymentObject = MapPaymentEntityToPaymentObject(paymentEntity);
-    return { payment: paymentObject };
+    const payment = await this.getPaymentObject(input.paymentId);
+    return { payment };
   };
 
-  private async setPaymentStatus(payment: Payment, statusToSet: string) {
+  private async setPaymentStatus(payment: PaymentObject, statusToSet: string) {
     payment.status = statusToSet;
 
-    await this.paymentRepository.persist(payment).flush();
+    await this.paymentRepository.update(payment);
   }
 
   approvePayment = async (
     input: approvePaymentInput
   ): Promise<approvePaymentOutput> => {
-    const payment = await this.getPaymentEntity(input.paymentId);
+    const payment = await this.getPaymentObject(input.paymentId);
 
     if (
       payment.status.trim().toLowerCase() == PaymentStatusEnum.enum.cancelled
@@ -96,7 +88,7 @@ export class PaymentService {
   cancelPayment = async (
     input: cancelPaymentInput
   ): Promise<cancelPaymentOutput> => {
-    const payment = await this.getPaymentEntity(input.paymentId);
+    const payment = await this.getPaymentObject(input.paymentId);
 
     if (
       payment.status.trim().toLowerCase() == PaymentStatusEnum.enum.approved
