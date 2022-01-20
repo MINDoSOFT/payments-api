@@ -1,3 +1,6 @@
+# These will need to be generated on every machine that the project runs on
+vault-data
+
 # Generated files
 public
 
