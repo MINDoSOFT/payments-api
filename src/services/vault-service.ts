@@ -1,28 +1,40 @@
 import NodeVault from "node-vault";
-import { VaultCredentialsNotFoundError } from "../errors/vault-service-error";
-import { getVaultCredentialsInput, getVaultCredentialsOutput, VaultOptions, VaultServiceInterface } from "../interfaces/services/vault-service-interface";
+import { VaultCredentialsNotFoundError, VaultNotInitialisedError } from "../errors/vault-service-error";
+import { getVaultCredentialsInput, getVaultCredentialsOutput, initVaultInput, VaultOptions, VaultServiceInterface } from "../interfaces/services/vault-service-interface";
 import { VaultCredsResponse } from "../interfaces/VaultCredsResponse";
 
 export class VaultService implements VaultServiceInterface {
-  private vaultOptions: VaultOptions;
-  private roleId : string;
-  private secretId : string;
-  private vaultClient : NodeVault.client;
+  private static instance: VaultService;
 
-  constructor(vaultOptions: VaultOptions, roleId : string, secretId : string) {
+  private vaultOptions: VaultOptions | undefined;
+  private roleId : string | undefined;
+  private secretId : string | undefined;
+  private vaultClient : NodeVault.client | undefined;
 
-    this.vaultOptions = vaultOptions;
-    this.roleId = roleId;
-    this.secretId = secretId;
-    this.vaultClient = NodeVault(this.vaultOptions);
+  private constructor() {
+    this.vaultOptions = undefined; // To bypass the empty constructor error
   }
 
-  init = async (): Promise<void> => {
+  public static getInstance(): VaultService {
+    if (!VaultService.instance) {
+      VaultService.instance = new VaultService();
+    }
+
+    return VaultService.instance;
+  }
+
+  init = async (input : initVaultInput): Promise<void> => {
+    this.vaultOptions = input.vaultOptions;
+    this.roleId = input.roleId;
+    this.secretId = input.secretId;
+    this.vaultClient = NodeVault(this.vaultOptions);
+
     await this.vaultClient.approleLogin({ role_id: this.roleId, secret_id: this.secretId })
     console.log('Vault Service instantiated OK.');
   }
 
   getCredentials = async (input : getVaultCredentialsInput): Promise<getVaultCredentialsOutput> => {
+    if (!this.vaultClient) throw new VaultNotInitialisedError();
     const creds : VaultCredsResponse | void = await this.vaultClient.read(
         input.path
     );

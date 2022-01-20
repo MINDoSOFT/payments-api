@@ -13,8 +13,11 @@ import { readFileSync } from 'fs';
 import { MongoService, MongoServiceType } from './services/mongo-service';
 import { VaultServiceInterface } from './interfaces/services/vault-service-interface';
 import { Index } from '.';
+import { initVaultInput } from './interfaces/services/vault-service-interface';
+import { initMongoInput } from './interfaces/services/mongo-service-interface';
 
 let vaultService : VaultServiceInterface;
+let initVaultInput : initVaultInput;
 
 if (process.env.VAULT_TYPE && process.env.VAULT_TYPE == 'MOCK') {
     vaultService = new MockVaultService('just a test username', 'just a test password');
@@ -29,7 +32,9 @@ if (process.env.VAULT_TYPE && process.env.VAULT_TYPE == 'MOCK') {
     const roleId = readFileSync('./vault-data/payments-api-role_id', 'utf8');
     const secretId = readFileSync('./vault-data/payments-api-secret_id', 'utf8');
 
-    vaultService = new VaultService(vaultOptions, roleId, secretId);
+    vaultService = VaultService.getInstance();
+
+    initVaultInput = { vaultOptions, roleId, secretId };
 }
 
 let mongoType : MongoServiceType = MongoServiceType.REAL;
@@ -38,24 +43,26 @@ if (process.env.MONGO_DB_TYPE && process.env.MONGO_DB_TYPE == 'INMEMORY') {
     mongoType = MongoServiceType.INMEMORY;
 }
 
-let mongoService : MongoService;
+const mongoService = MongoService.getInstance();
 
 const index = Index.getInstance();
 
-Promise.resolve(vaultService.init()).
+let initMongoInput : initMongoInput;
+
+Promise.resolve(vaultService.init(initVaultInput)).
 then(() => 
     Promise.resolve(vaultService.getCredentials({path : 'mongodb/creds/payments-api-client'})).
     then((mongoDbCreds) => {
-        mongoService = new MongoService(mongoType, mongoDbCreds.username, mongoDbCreds.password);
+        initMongoInput = {mongoType, username: mongoDbCreds.username, password: mongoDbCreds.password};
     }).
-    then(() => Promise.resolve(mongoService.init().
+    then(() => Promise.resolve(mongoService.init(initMongoInput)).
         then(() => {
             index.init(mongoService);
             index.setupRoutes();
         })).
         then(() => {
             runServer();
-        })));
+        }));
 
 export let server: http.Server = http.createServer();
 
