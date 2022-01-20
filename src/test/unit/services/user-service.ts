@@ -1,46 +1,32 @@
-import { EntityRepository } from '@mikro-orm/core';
-import { assert } from 'chai';
-import { User } from '../../../entities/User';
-const sinon = require('sinon');
+import { stubInterface } from "ts-sinon";
+import { UserObject } from "../../../pocos/user-object";
+import { IUserRepo } from "../../../repos/user-repo";
 import bcrypt = require('bcrypt');
-import { UserService } from '../../../services/user-service';
-
-let userRepository: EntityRepository<User>;
-
-const testUserPassword = 'aVerySafePassword1234';
-const saltRounds = 1;
-const testUser = {
-    id : '750789de-a6d2-4d08-afd3-ec5de5c43449',
-    username: 'aTestUser',
-    password: bcrypt.hashSync(testUserPassword, saltRounds)
-}
-
-let userService: UserService;
+import { UserService } from "../../../services/user-service";
+import { assert } from 'chai';
 
 describe('User Service', () => {
-    before(() => {
-        sinon
-            .stub(userRepository, 'findOne')
-            .yields({ 
-                _id: testUser.id,
-                username: testUser.username,
-                password: testUser.password
-            }
-        )
-
-        userService = new UserService(userRepository);
-    })
-
-    after(() => {
-        sinon
-            .stub(userRepository).restore();
-    })
-
     it('should return the user', async () => {
+        const testUserPassword = 'aVerySafePassword1234';
+        const saltRounds = 1;
+        const testUser : UserObject = {
+            id : '750789de-a6d2-4d08-afd3-ec5de5c43449',
+            username: 'aTestUser',
+            password: bcrypt.hashSync(testUserPassword, saltRounds)
+        };
+
+        const userRepo = stubInterface<IUserRepo>({
+            findByUsername: Promise.resolve(testUser)
+        });
+
+        const userService = new UserService(userRepo);
+
         const getUserOutput = await userService.getUser({ username : testUser.username });
+
         const user = getUserOutput.user;
-        assert.equal(testUser.id, user._id);
+        assert.equal(testUser.id, user.id);
         assert.equal(testUser.username, user.username);
+        assert.equal(testUser.password, user.password);
     });
 
 });
