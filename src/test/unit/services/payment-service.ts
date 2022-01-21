@@ -6,7 +6,7 @@ import chai from "chai";
 import chaiUuid = require('chai-uuid');
 chai.use(chaiUuid);
 import { getTestPayment } from "./payment-helper";
-import { CreatePaymentObject, PaymentObject } from "../../../pocos/payment-object";
+import { CreatePaymentObject, PaymentObject, PaymentStatusEnum } from "../../../pocos/payment-object";
 import { assertPayment } from "../../integration/payment-helper";
 
 const assert = chai.assert;
@@ -190,6 +190,80 @@ describe('Payment Service', () => {
 
             const payment = getPaymentsResult.payments[0];
             assertPayment(payment, testPayment);
+        }
+    });
+
+    it('should return payment has been cancelled error', async () => {
+        const getTestPaymentOutput = getTestPayment();
+        testPayment = getTestPaymentOutput.payment;
+
+        testPayment.status = PaymentStatusEnum.CANCELLED;
+
+        paymentRepo = stubInterface<IPaymentRepo>({
+            findById: Promise.resolve(testPayment)
+        });
+
+        const paymentService = new PaymentService(paymentRepo);
+
+        const approvePaymentResult = await paymentService.approvePayment({ paymentId : testPayment.id });
+
+        if (approvePaymentResult.type !== 'PaymentHasBeenCancelledError') {
+            assert.fail();
+        } else {
+            assert.equal(approvePaymentResult.status, PaymentStatusEnum.CANCELLED);
+        }
+    });
+
+    it('should return payment already approved error', async () => {
+        const getTestPaymentOutput = getTestPayment();
+        testPayment = getTestPaymentOutput.payment;
+
+        testPayment.status = PaymentStatusEnum.APPROVED;
+
+        paymentRepo = stubInterface<IPaymentRepo>({
+            findById: Promise.resolve(testPayment)
+        });
+
+        const paymentService = new PaymentService(paymentRepo);
+
+        const approvePaymentResult = await paymentService.approvePayment({ paymentId : testPayment.id });
+
+        if (approvePaymentResult.type !== 'PaymentAlreadyApprovedError') {
+            assert.fail();
+        } else {
+            assert.equal(approvePaymentResult.paymentId, testPayment.id);
+        }
+    });
+
+    it('should return payment not found error', async () => {
+        paymentRepo = stubInterface<IPaymentRepo>({
+            findById: Promise.resolve(undefined)
+        });
+
+        const paymentService = new PaymentService(paymentRepo);
+
+        const approvePaymentResult = await paymentService.approvePayment({ paymentId : testPayment.id });
+
+        if (approvePaymentResult.type !== 'PaymentNotFoundError') {
+            assert.fail();
+        }
+    });
+
+    it('should return payment approved success', async () => {
+        const getTestPaymentOutput = getTestPayment();
+        testPayment = getTestPaymentOutput.payment;
+
+        paymentRepo = stubInterface<IPaymentRepo>({
+            findById: Promise.resolve(testPayment),
+            update: Promise.resolve(true)
+        });
+
+        const paymentService = new PaymentService(paymentRepo);
+
+        const approvePaymentResult = await paymentService.approvePayment({ paymentId : testPayment.id });
+
+        if (approvePaymentResult.type !== 'ApprovePaymentSuccess') {
+            assert.fail();
         }
     });
 

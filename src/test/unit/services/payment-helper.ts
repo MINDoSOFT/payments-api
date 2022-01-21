@@ -1,6 +1,6 @@
 import chai from "chai";
 
-import { PaymentObject } from "../../../pocos/payment-object";
+import { PaymentObject, PaymentStatusEnum } from "../../../pocos/payment-object";
 
 const assert = chai.assert;
 
@@ -13,7 +13,7 @@ export function getTestPayment() : {payment: PaymentObject} {
 		paymentMethod: "mastercard",
 		amount: 100500.42,
 		currency: "USD",
-		status: "approved",
+		status: PaymentStatusEnum.CREATED,
 		comment: "Salary for March",
 		created: new Date(),
 		updated: new Date()
