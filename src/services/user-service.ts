@@ -77,7 +77,7 @@ export class UserService {
           type: 'UserNotFoundError',
           message: 'Could not find user with username: ' + input.username
         }
-      };  
+      }
 
       return { 
         type: 'GetUserSuccess', 
@@ -125,7 +125,7 @@ export class UserService {
           username : input.username,
           plaintextPassword : input.plaintextPassword
         }
-        const user = await this.userRepository.create(userToCreate);
+        await this.userRepository.create(userToCreate);
         return {
           type: 'AddUserForTestingSuccess'
         }

@@ -62,7 +62,7 @@ export class AuthenticateController {
       });
 
       switch (validateUserPasswordResult.type) {
-        case 'ValidateUserPasswordSuccess': 
+        case 'ValidateUserPasswordSuccess': {
           const getUserJWTResult = await this.jwtService.getUserJWT({
             username: req.body.username
           });
@@ -76,7 +76,8 @@ export class AuthenticateController {
             authToken: getUserJWTResult.token,
             expiresIn: getUserJWTResult.expiresIn
           });
-        case 'UserPasswordInvalidError':
+        }
+        case 'UserPasswordInvalidError': {
           const detail = new ErrorDetail(WRONG_USERNAME_OR_PASSWORD_MESSAGE);
 
           return res.status(StatusCodes.UNAUTHORIZED).json({
@@ -84,6 +85,7 @@ export class AuthenticateController {
             message: ERROR_VALIDATION_MESSAGE,
             details: [detail]
           });
+        }
         case 'UnexpectedError':
           return res
             .status(StatusCodes.INTERNAL_SERVER_ERROR)

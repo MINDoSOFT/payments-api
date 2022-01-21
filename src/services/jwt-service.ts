@@ -78,7 +78,7 @@ export class JWTService {
       return {
         type: 'UnexpectedError'
       }
-    };
+    }
   };
 
   getUserExpiredJWT = async (input: GetUserExpiredJWTInput): Promise<GetUserExpiredJWTResult> => {

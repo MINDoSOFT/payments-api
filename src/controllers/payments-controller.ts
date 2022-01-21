@@ -14,13 +14,6 @@ import {
   ERROR_VALIDATION_CODE,
   ERROR_VALIDATION_MESSAGE
 } from '../enums/api-error-codes';
-import {
-  PaymentAlreadyApprovedError,
-  PaymentAlreadyCancelledError,
-  PaymentHasBeenApprovedError,
-  PaymentHasBeenCancelledError,
-  PaymentNotFoundError
-} from '../errors/payment-service-error';
 import { ErrorResponse } from '../interfaces/routes/error';
 import {
   ApprovePaymentRequest,
@@ -54,10 +47,17 @@ export class PaymentsController {
     res: ListPaymentsResponse
   ) => {
     try {
-      const getPaymentsOutput = await this.paymentService.getPayments();
-      const payments = getPaymentsOutput.payments;
-
-      return res.status(StatusCodes.OK).json(payments);
+      const getPaymentsResult = await this.paymentService.getPayments();
+      
+      switch (getPaymentsResult.type) {
+        case 'GetPaymentsSuccess': 
+          return res.status(StatusCodes.OK)
+            .json(getPaymentsResult.payments);
+        case 'UnexpectedError':
+          return res
+            .status(StatusCodes.INTERNAL_SERVER_ERROR)
+            .send('Unexpected error while getting payments');
+      }
     } catch (error) {
       return res
         .status(StatusCodes.INTERNAL_SERVER_ERROR)
@@ -72,36 +72,54 @@ export class PaymentsController {
     let reqPaymentId: string;
 
     try {
-      const createPaymentOutput = await this.paymentService.createPayment({
+      const createPaymentResult = await this.paymentService.createPayment({
         payment: req.body
       });
-      reqPaymentId = createPaymentOutput.paymentId;
-    } catch (error) {
-      if (error instanceof ZodError) {
-        const details: ErrorDetail[] = [];
-        error.issues.forEach((issue) => {
-          details.push(new ErrorDetail(issue.message, issue.path));
-        });
 
-        return res.status(StatusCodes.BAD_REQUEST).json({
-          code: ERROR_VALIDATION_CODE,
-          message: ERROR_VALIDATION_MESSAGE,
-          details: details
-        });
-      } else {
-        return res
-          .status(StatusCodes.INTERNAL_SERVER_ERROR)
-          .send(`Error persisting payment:` + error);
+      switch (createPaymentResult.type) {
+        case 'CreatePaymentSuccess': 
+          reqPaymentId = createPaymentResult.paymentId;
+          break;
+        case 'CreatePaymentSchemaValidationError': {
+          const details: ErrorDetail[] = [];
+          createPaymentResult.error.issues.forEach((issue) => {
+            details.push(new ErrorDetail(issue.message, issue.path));
+          });
+
+          return res.status(StatusCodes.BAD_REQUEST).json({
+            code: ERROR_VALIDATION_CODE,
+            message: ERROR_VALIDATION_MESSAGE,
+            details: details
+          });
+        }
+        case 'UnexpectedError':
+          return res
+            .status(StatusCodes.INTERNAL_SERVER_ERROR)
+            .send('Unexpected error while creating payment');
       }
+    } catch (error) {
+      return res
+        .status(StatusCodes.INTERNAL_SERVER_ERROR)
+        .send(`Error creating payment:` + error);
     }
 
     try {
-      const getPaymentOutput = await this.paymentService.getPayment({
+      const getPaymentResult = await this.paymentService.getPayment({
         paymentId: reqPaymentId
       });
-      const resPayment = getPaymentOutput.payment;
 
-      return res.status(StatusCodes.CREATED).json(resPayment);
+      switch (getPaymentResult.type) {
+        case 'GetPaymentSuccess': 
+          return res.status(StatusCodes.CREATED).json(getPaymentResult.payment);
+        case 'PaymentNotFoundError':
+          return res
+            .status(StatusCodes.INTERNAL_SERVER_ERROR)
+            .send(getPaymentResult.message);
+        case 'UnexpectedError':
+          return res
+            .status(StatusCodes.INTERNAL_SERVER_ERROR)
+            .send('Unexpected error while retrieving created payment');
+      }      
     } catch (error) {
       return res
         .status(StatusCodes.INTERNAL_SERVER_ERROR)
@@ -137,22 +155,28 @@ export class PaymentsController {
     const paymentId = req.params.id;
 
     try {
-      const getPaymentOutput = await this.paymentService.getPayment({
+      const getPaymentResult = await this.paymentService.getPayment({
         paymentId
       });
-      const resPayment = getPaymentOutput.payment;
-      return res.status(StatusCodes.OK).json(resPayment);
-    } catch (error) {
-      if (error instanceof PaymentNotFoundError) {
-        return res.status(StatusCodes.NOT_FOUND).json({
-          code: ERROR_NOT_FOUND_CODE,
-          message: ERROR_NOT_FOUND_MESSAGE,
-          details: []
-        });
+
+      switch (getPaymentResult.type) {
+        case 'GetPaymentSuccess':
+          return res.status(StatusCodes.OK).json(getPaymentResult.payment);
+        case 'PaymentNotFoundError':
+          return res.status(StatusCodes.NOT_FOUND).json({
+            code: ERROR_NOT_FOUND_CODE,
+            message: ERROR_NOT_FOUND_MESSAGE,
+            details: []
+          });
+        case 'UnexpectedError':
+          return res
+            .status(StatusCodes.INTERNAL_SERVER_ERROR)
+            .send(`Unexpected error loading payment '${paymentId}'`);      
       }
+    } catch (error) {
       return res
         .status(StatusCodes.INTERNAL_SERVER_ERROR)
-        .send(`Error loading payment '${paymentId}':` + error);
+        .send(`Error loading payment '${paymentId}':` + error);      
     }
   };
 
@@ -184,33 +208,38 @@ export class PaymentsController {
     const paymentId = req.params.id;
 
     try {
-      await this.paymentService.approvePayment({ paymentId });
+      const result = await this.paymentService.approvePayment({ paymentId });
 
-      return res.status(StatusCodes.OK).send();
+      switch (result.type) {
+        case 'ApprovePaymentSuccess':
+          return res.status(StatusCodes.OK).send();
+        case 'PaymentHasBeenCancelledError':
+          return res.status(StatusCodes.BAD_REQUEST).json({
+            code: ERROR_CANNOT_APPROVE_CODE,
+            message: ERROR_CANNOT_APPROVE_MESSAGE,
+            details: []
+          });
+        case 'PaymentAlreadyApprovedError':
+          return res.status(StatusCodes.BAD_REQUEST).json({
+            code: ERROR_ALREADY_APPROVED_CODE,
+            message: ERROR_ALREADY_APPROVED_MESSAGE,
+            details: []
+          });
+        case 'PaymentNotFoundError':
+          return res.status(StatusCodes.NOT_FOUND).json({
+            code: ERROR_NOT_FOUND_CODE,
+            message: ERROR_NOT_FOUND_MESSAGE,
+            details: []
+          });
+        case 'UnexpectedError':
+          return res
+            .status(StatusCodes.INTERNAL_SERVER_ERROR)
+            .send(`Unexpected error approving payment '${paymentId}'`);      
+      }
     } catch (error) {
-      if (error instanceof PaymentHasBeenCancelledError) {
-        return res.status(StatusCodes.BAD_REQUEST).json({
-          code: ERROR_CANNOT_APPROVE_CODE,
-          message: ERROR_CANNOT_APPROVE_MESSAGE,
-          details: []
-        });
-      } else if (error instanceof PaymentAlreadyApprovedError) {
-        return res.status(StatusCodes.BAD_REQUEST).json({
-          code: ERROR_ALREADY_APPROVED_CODE,
-          message: ERROR_ALREADY_APPROVED_MESSAGE,
-          details: []
-        });
-      } else if (error instanceof PaymentNotFoundError) {
-        return res.status(StatusCodes.NOT_FOUND).json({
-          code: ERROR_NOT_FOUND_CODE,
-          message: ERROR_NOT_FOUND_MESSAGE,
-          details: []
-        });
-      } else {
         return res
           .status(StatusCodes.INTERNAL_SERVER_ERROR)
           .send(`Error approving payment '${paymentId}':` + error);
-      }
     }
   };
 
@@ -242,33 +271,38 @@ export class PaymentsController {
     const paymentId = req.params.id;
 
     try {
-      await this.paymentService.cancelPayment({ paymentId });
+      const result = await this.paymentService.cancelPayment({ paymentId });
 
-      return res.status(StatusCodes.OK).send();
+      switch (result.type) {
+        case 'CancelPaymentSuccess':
+          return res.status(StatusCodes.OK).send();
+        case 'PaymentHasBeenApprovedError':
+          return res.status(StatusCodes.BAD_REQUEST).json({
+            code: ERROR_CANNOT_CANCEL_CODE,
+            message: ERROR_CANNOT_CANCEL_MESSAGE,
+            details: []
+          });
+        case 'PaymentAlreadyCancelledError':
+          return res.status(StatusCodes.BAD_REQUEST).json({
+            code: ERROR_ALREADY_CANCELLED_CODE,
+            message: ERROR_ALREADY_CANCELLED_MESSAGE,
+            details: []
+          });
+        case 'PaymentNotFoundError':
+          return res.status(StatusCodes.NOT_FOUND).json({
+            code: ERROR_NOT_FOUND_CODE,
+            message: ERROR_NOT_FOUND_MESSAGE,
+            details: []
+          });
+        case 'UnexpectedError':
+          return res
+            .status(StatusCodes.INTERNAL_SERVER_ERROR)
+            .send(`Unexpected error cancelling payment '${paymentId}'`);
+      }
     } catch (error) {
-      if (error instanceof PaymentHasBeenApprovedError) {
-        return res.status(StatusCodes.BAD_REQUEST).json({
-          code: ERROR_CANNOT_CANCEL_CODE,
-          message: ERROR_CANNOT_CANCEL_MESSAGE,
-          details: []
-        });
-      } else if (error instanceof PaymentAlreadyCancelledError) {
-        return res.status(StatusCodes.BAD_REQUEST).json({
-          code: ERROR_ALREADY_CANCELLED_CODE,
-          message: ERROR_ALREADY_CANCELLED_MESSAGE,
-          details: []
-        });
-      } else if (error instanceof PaymentNotFoundError) {
-        return res.status(StatusCodes.NOT_FOUND).json({
-          code: ERROR_NOT_FOUND_CODE,
-          message: ERROR_NOT_FOUND_MESSAGE,
-          details: []
-        });
-      } else {
         return res
           .status(StatusCodes.INTERNAL_SERVER_ERROR)
           .send(`Error cancelling payment '${paymentId}':` + error);
-      }
     }
   };
 }
