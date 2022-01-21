@@ -12,14 +12,14 @@ import { assertPayment } from "../../integration/payment-helper";
 const assert = chai.assert;
 
 describe('Payment Service', () => {
-    let paymentRepo : IPaymentRepo;
+    //let paymentRepo : IPaymentRepo; // Putting this here will ruin the sinon extra properties e.g. calledOnce
     let testPayment : PaymentObject
 
     it('should return the payment', async () => {
         const getTestPaymentOutput = getTestPayment();
         testPayment = getTestPaymentOutput.payment;
 
-        paymentRepo = stubInterface<IPaymentRepo>({
+        const paymentRepo = stubInterface<IPaymentRepo>({
             findById: Promise.resolve(testPayment)
         });
 
@@ -32,6 +32,7 @@ describe('Payment Service', () => {
         } else {
             const payment = getPaymentResult.payment;
             assertPayment(payment, testPayment);
+            assert.isTrue(paymentRepo.findById.calledOnce);
         }
     });
 
@@ -39,7 +40,7 @@ describe('Payment Service', () => {
         const getTestPaymentOutput = getTestPayment();
         testPayment = getTestPaymentOutput.payment;
 
-        paymentRepo = stubInterface<IPaymentRepo>({
+        const paymentRepo = stubInterface<IPaymentRepo>({
             findById: Promise.resolve(undefined)
         });
 
@@ -50,6 +51,7 @@ describe('Payment Service', () => {
 
         if (getPaymentResult.type !== 'PaymentNotFoundError') {
             assert.fail();
+            assert.isTrue(paymentRepo.findById.calledOnce);
         }
     });
 
@@ -57,7 +59,7 @@ describe('Payment Service', () => {
         const getTestPaymentOutput = getTestPayment();
         testPayment = getTestPaymentOutput.payment;
 
-        paymentRepo = stubInterface<IPaymentRepo>({
+        const paymentRepo = stubInterface<IPaymentRepo>({
             create: Promise.resolve(testPayment)
         });
 
@@ -74,6 +76,7 @@ describe('Payment Service', () => {
         } else {
             assert.uuid(createPaymentResult.paymentId);
             assert.equal(createPaymentResult.paymentId, testPayment.id);
+            assert.isTrue(paymentRepo.create.calledOnce);
         }
     });
 
@@ -83,7 +86,7 @@ describe('Payment Service', () => {
 
         testPayment.payeeId = '1234';
 
-        paymentRepo = stubInterface<IPaymentRepo>({
+        const paymentRepo = stubInterface<IPaymentRepo>({
             create: Promise.resolve(testPayment)
         });
 
@@ -100,6 +103,7 @@ describe('Payment Service', () => {
         } else {
             assert.isArray(createPaymentResult.errors);
             assert.equal(createPaymentResult.errors.length, 1);
+            assert.isTrue(paymentRepo.create.notCalled);
         }
     });
 
@@ -110,7 +114,7 @@ describe('Payment Service', () => {
         testPayment.payeeId = '1234';
         testPayment.payerId = 'ABCD'
 
-        paymentRepo = stubInterface<IPaymentRepo>({
+        const paymentRepo = stubInterface<IPaymentRepo>({
             create: Promise.resolve(testPayment)
         });
 
@@ -127,11 +131,12 @@ describe('Payment Service', () => {
         } else {
             assert.isArray(createPaymentResult.errors);
             assert.equal(createPaymentResult.errors.length, 2);
+            assert.isTrue(paymentRepo.create.notCalled);
         }
     });
 
     it('should return the payments (no payments added)', async () => {
-        paymentRepo = stubInterface<IPaymentRepo>({
+        const paymentRepo = stubInterface<IPaymentRepo>({
             list: Promise.resolve([])
         });
 
@@ -144,6 +149,7 @@ describe('Payment Service', () => {
         } else {
             assert.isArray(getPaymentsResult.payments);
             assert.equal(getPaymentsResult.payments.length, 0);
+            assert.isTrue(paymentRepo.list.calledOnce);
         }
     });
 
@@ -151,7 +157,7 @@ describe('Payment Service', () => {
         const getTestPaymentOutput = getTestPayment();
         testPayment = getTestPaymentOutput.payment;
 
-        paymentRepo = stubInterface<IPaymentRepo>({
+        const paymentRepo = stubInterface<IPaymentRepo>({
             list: Promise.resolve([testPayment])
         });
 
@@ -167,6 +173,7 @@ describe('Payment Service', () => {
 
             const payment = getPaymentsResult.payments[0];
             assertPayment(payment, testPayment);
+            assert.isTrue(paymentRepo.list.calledOnce);
         }
     });
 
@@ -174,7 +181,7 @@ describe('Payment Service', () => {
         const getTestPaymentOutput = getTestPayment();
         testPayment = getTestPaymentOutput.payment;
 
-        paymentRepo = stubInterface<IPaymentRepo>({
+        const paymentRepo = stubInterface<IPaymentRepo>({
             list: Promise.resolve([testPayment, testPayment])
         });
 
@@ -190,6 +197,7 @@ describe('Payment Service', () => {
 
             const payment = getPaymentsResult.payments[0];
             assertPayment(payment, testPayment);
+            assert.isTrue(paymentRepo.list.calledOnce);
         }
     });
 
@@ -199,7 +207,7 @@ describe('Payment Service', () => {
 
         testPayment.status = PaymentStatusEnum.CANCELLED;
 
-        paymentRepo = stubInterface<IPaymentRepo>({
+        const paymentRepo = stubInterface<IPaymentRepo>({
             findById: Promise.resolve(testPayment)
         });
 
@@ -211,6 +219,7 @@ describe('Payment Service', () => {
             assert.fail();
         } else {
             assert.equal(approvePaymentResult.status, PaymentStatusEnum.CANCELLED);
+            assert.isTrue(paymentRepo.findById.calledOnce);
         }
     });
 
@@ -220,7 +229,7 @@ describe('Payment Service', () => {
 
         testPayment.status = PaymentStatusEnum.APPROVED;
 
-        paymentRepo = stubInterface<IPaymentRepo>({
+        const paymentRepo = stubInterface<IPaymentRepo>({
             findById: Promise.resolve(testPayment)
         });
 
@@ -232,11 +241,12 @@ describe('Payment Service', () => {
             assert.fail();
         } else {
             assert.equal(approvePaymentResult.paymentId, testPayment.id);
+            assert.isTrue(paymentRepo.findById.calledOnce);
         }
     });
 
     it('should return payment not found error', async () => {
-        paymentRepo = stubInterface<IPaymentRepo>({
+        const paymentRepo = stubInterface<IPaymentRepo>({
             findById: Promise.resolve(undefined)
         });
 
@@ -246,6 +256,8 @@ describe('Payment Service', () => {
 
         if (approvePaymentResult.type !== 'PaymentNotFoundError') {
             assert.fail();
+        } else {
+            assert.isTrue(paymentRepo.findById.calledOnce);
         }
     });
 
@@ -253,7 +265,7 @@ describe('Payment Service', () => {
         const getTestPaymentOutput = getTestPayment();
         testPayment = getTestPaymentOutput.payment;
 
-        paymentRepo = stubInterface<IPaymentRepo>({
+        const paymentRepo = stubInterface<IPaymentRepo>({
             findById: Promise.resolve(testPayment),
             update: Promise.resolve(true)
         });
@@ -264,6 +276,9 @@ describe('Payment Service', () => {
 
         if (approvePaymentResult.type !== 'ApprovePaymentSuccess') {
             assert.fail();
+        } else {
+            assert.isTrue(paymentRepo.findById.calledOnce);
+            assert.isTrue(paymentRepo.update.calledOnce);
         }
     });
 
@@ -273,7 +288,7 @@ describe('Payment Service', () => {
 
         testPayment.status = PaymentStatusEnum.APPROVED;
 
-        paymentRepo = stubInterface<IPaymentRepo>({
+        const paymentRepo = stubInterface<IPaymentRepo>({
             findById: Promise.resolve(testPayment)
         });
 
@@ -285,6 +300,7 @@ describe('Payment Service', () => {
             assert.fail();
         } else {
             assert.equal(cancelPaymentResult.status, PaymentStatusEnum.APPROVED);
+            assert.isTrue(paymentRepo.findById.calledOnce);
         }
     });
 
@@ -294,7 +310,7 @@ describe('Payment Service', () => {
 
         testPayment.status = PaymentStatusEnum.CANCELLED;
 
-        paymentRepo = stubInterface<IPaymentRepo>({
+        const paymentRepo = stubInterface<IPaymentRepo>({
             findById: Promise.resolve(testPayment)
         });
 
@@ -306,11 +322,12 @@ describe('Payment Service', () => {
             assert.fail();
         } else {
             assert.equal(cancelPaymentResult.paymentId, testPayment.id);
+            assert.isTrue(paymentRepo.findById.calledOnce);
         }
     });
 
     it('should return payment not found error', async () => {
-        paymentRepo = stubInterface<IPaymentRepo>({
+        const paymentRepo = stubInterface<IPaymentRepo>({
             findById: Promise.resolve(undefined)
         });
 
@@ -320,6 +337,7 @@ describe('Payment Service', () => {
 
         if (approvePaymentResult.type !== 'PaymentNotFoundError') {
             assert.fail();
+            assert.isTrue(paymentRepo.findById.calledOnce);
         }
     });
 
@@ -327,7 +345,7 @@ describe('Payment Service', () => {
         const getTestPaymentOutput = getTestPayment();
         testPayment = getTestPaymentOutput.payment;
 
-        paymentRepo = stubInterface<IPaymentRepo>({
+        const paymentRepo = stubInterface<IPaymentRepo>({
             findById: Promise.resolve(testPayment),
             update: Promise.resolve(true)
         });
@@ -338,6 +356,9 @@ describe('Payment Service', () => {
 
         if (cancelPaymentResult.type !== 'CancelPaymentSuccess') {
             assert.fail();
+        } else {
+            assert.isTrue(paymentRepo.findById.calledOnce);
+            assert.isTrue(paymentRepo.update.calledOnce);
         }
     });
 
