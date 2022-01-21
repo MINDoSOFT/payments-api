@@ -14,3 +14,9 @@ export interface PaymentObject extends CreatePaymentObject {
   created: Date;
   updated: Date;
 }
+
+export enum PaymentStatusEnum {
+  CREATED = 'created',
+  APPROVED = 'approved',
+  CANCELLED = 'cancelled'
+}

@@ -82,8 +82,8 @@ export class PaymentsController {
           break;
         case 'CreatePaymentSchemaValidationError': {
           const details: ErrorDetail[] = [];
-          createPaymentResult.error.issues.forEach((issue) => {
-            details.push(new ErrorDetail(issue.message, issue.path));
+          createPaymentResult.errors.forEach((error) => {
+            details.push(new ErrorDetail(error.message, error.path));
           });
 
           return res.status(StatusCodes.BAD_REQUEST).json({

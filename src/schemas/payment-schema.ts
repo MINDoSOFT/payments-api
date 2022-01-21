@@ -1,6 +1,5 @@
 import { z } from 'zod';
-
-export const PaymentStatusEnum = z.enum(['created', 'approved', 'cancelled']);
+import { PaymentStatusEnum } from '../pocos/payment-object';
 
 export const CreatePaymentSchema = z.object({
   payeeId: z.string().uuid(),
@@ -14,7 +13,7 @@ export const CreatePaymentSchema = z.object({
 
 export const PaymentSchema = CreatePaymentSchema.extend({
   id: z.string().uuid(),
-  status: PaymentStatusEnum,
+  status: z.nativeEnum(PaymentStatusEnum),
   created: z.date(),
   updated: z.date()
 });

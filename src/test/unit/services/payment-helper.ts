@@ -1,4 +1,8 @@
+import chai from "chai";
+
 import { PaymentObject } from "../../../pocos/payment-object";
+
+const assert = chai.assert;
 
 export function getTestPayment() : {payment: PaymentObject} {
     const testPayment : PaymentObject = {
@@ -15,4 +19,18 @@ export function getTestPayment() : {payment: PaymentObject} {
 		updated: new Date()
 	};
     return { payment: testPayment };
+}
+
+export function assertPayment(actual : PaymentObject, expected : PaymentObject) {
+    assert.equal(actual.id, expected.id);
+    assert.equal(actual.payeeId, expected.payeeId);
+    assert.equal(actual.payerId, expected.payerId);
+    assert.equal(actual.paymentSystem, expected.paymentSystem);
+    assert.equal(actual.paymentMethod, expected.paymentMethod);
+    assert.equal(actual.amount, expected.amount);
+    assert.equal(actual.currency, expected.currency);
+    assert.equal(actual.status, expected.status);
+    assert.equal(actual.comment, expected.comment);
+    assert.equal(actual.created, expected.created);
+    assert.equal(actual.updated, expected.updated);
 }

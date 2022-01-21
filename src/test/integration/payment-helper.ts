@@ -3,8 +3,7 @@ import chaiUuid = require('chai-uuid');
 chai.use(chaiUuid);
 import { ERROR_VALIDATION_CODE, ERROR_VALIDATION_MESSAGE } from "../../enums/api-error-codes";
 import { ErrorResponseObject } from "../../pocos/error-response-object";
-import { CreatePaymentObject, PaymentObject } from '../../pocos/payment-object';
-import { PaymentStatusEnum } from "../../schemas/payment-schema";
+import { CreatePaymentObject, PaymentObject, PaymentStatusEnum } from '../../pocos/payment-object';
 
 const assert = chai.assert;
 
@@ -20,7 +19,7 @@ export function assertCreatedPayment(paymentToCreate : CreatePaymentObject, crea
     assert.isNotEmpty(createdPayment.id);
     assert.isNotEmpty(createdPayment.created);
     assert.isNotEmpty(createdPayment.updated);
-    assert.equal(createdPayment.status, PaymentStatusEnum.enum.created);
+    assert.equal(createdPayment.status, PaymentStatusEnum.CREATED);
 
     assert.uuid(createdPayment.id);
 }

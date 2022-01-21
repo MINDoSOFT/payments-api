@@ -1,7 +1,7 @@
 import { ZodError } from 'zod';
-import { CreatePaymentObject, PaymentObject } from '../pocos/payment-object';
+import { CreatePaymentObject, PaymentObject, PaymentStatusEnum } from '../pocos/payment-object';
 import { IPaymentRepo } from '../repos/payment-repo';
-import { PaymentStatusEnum } from '../schemas/payment-schema';
+import { CreatePaymentSchema } from '../schemas/payment-schema';
 
 type GetPaymentsSuccess = {
   type: 'GetPaymentsSuccess';
@@ -21,9 +21,14 @@ type CreatePaymentSuccess = {
   paymentId: string;
 }
 
+export type SchemaValidationError = {
+  message: string, 
+  path: (string | number)[]
+}
+
 type CreatePaymentSchemaValidationError = {
   type: 'CreatePaymentSchemaValidationError';
-  error: ZodError;
+  errors: SchemaValidationError[];
 }
 
 type GetPaymentInput = {
@@ -128,12 +133,19 @@ export class PaymentService {
   ): Promise<CreatePaymentResult> => {
 
     try {
+      CreatePaymentSchema.parse(input.payment);
+
       const paymentCreated = await this.paymentRepository.create(input.payment);
 
       return { type: 'CreatePaymentSuccess', paymentId: paymentCreated.id }; 
     } catch (error) {
       if (error instanceof ZodError) {
-        return { type: 'CreatePaymentSchemaValidationError', error: error };
+        const errors : { message: string, path: (string | number)[]}[] = []
+
+        error.issues.forEach(issue => {
+          errors.push({message: issue.message, path: issue.path});
+        });
+        return { type: 'CreatePaymentSchemaValidationError', errors: errors };
       }
       return { type: 'UnexpectedError' };
     }
@@ -183,7 +195,7 @@ export class PaymentService {
       }
 
       if (
-        payment.status.trim().toLowerCase() == PaymentStatusEnum.enum.cancelled
+        payment.status.trim().toLowerCase() == PaymentStatusEnum.CANCELLED
       ) {
         const errorMessage = `Cannot approve payment (id: '${input.paymentId}') because it has status : '${payment.status}'`
         return {
@@ -193,7 +205,7 @@ export class PaymentService {
           message: errorMessage
         }
       } else if (
-        payment.status.trim().toLowerCase() == PaymentStatusEnum.enum.approved
+        payment.status.trim().toLowerCase() == PaymentStatusEnum.APPROVED
       ) {
         const errorMessage = `Payment (id: '${input.paymentId}') was already approved`
         return {
@@ -203,7 +215,7 @@ export class PaymentService {
         }
       }
 
-      this.setPaymentStatus(payment, PaymentStatusEnum.enum.approved);
+      this.setPaymentStatus(payment, PaymentStatusEnum.APPROVED);
 
       return { type: 'ApprovePaymentSuccess' };
     } catch (error) {
@@ -226,7 +238,7 @@ export class PaymentService {
       }
 
       if (
-        payment.status.trim().toLowerCase() == PaymentStatusEnum.enum.approved
+        payment.status.trim().toLowerCase() == PaymentStatusEnum.APPROVED
       ) {
         const errorMessage = `Cannot cancel payment (id: '${input.paymentId}') because it has status : '${payment.status}'`
         return {
@@ -236,7 +248,7 @@ export class PaymentService {
           message: errorMessage
         }
       } else if (
-        payment.status.trim().toLowerCase() == PaymentStatusEnum.enum.cancelled
+        payment.status.trim().toLowerCase() == PaymentStatusEnum.CANCELLED
       ) {
         const errorMessage = `Payment (id: '${input.paymentId}') was already cancelled`
         return {
@@ -246,7 +258,7 @@ export class PaymentService {
         }
       }
 
-      this.setPaymentStatus(payment, PaymentStatusEnum.enum.cancelled);
+      this.setPaymentStatus(payment, PaymentStatusEnum.CANCELLED);
 
       return { type: 'CancelPaymentSuccess' };
     } catch (error) {
