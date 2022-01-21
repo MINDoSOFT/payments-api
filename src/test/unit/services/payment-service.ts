@@ -267,4 +267,78 @@ describe('Payment Service', () => {
         }
     });
 
+    it('should return payment has been approved error', async () => {
+        const getTestPaymentOutput = getTestPayment();
+        testPayment = getTestPaymentOutput.payment;
+
+        testPayment.status = PaymentStatusEnum.APPROVED;
+
+        paymentRepo = stubInterface<IPaymentRepo>({
+            findById: Promise.resolve(testPayment)
+        });
+
+        const paymentService = new PaymentService(paymentRepo);
+
+        const cancelPaymentResult = await paymentService.cancelPayment({ paymentId : testPayment.id });
+
+        if (cancelPaymentResult.type !== 'PaymentHasBeenApprovedError') {
+            assert.fail();
+        } else {
+            assert.equal(cancelPaymentResult.status, PaymentStatusEnum.APPROVED);
+        }
+    });
+
+    it('should return payment already cancelled error', async () => {
+        const getTestPaymentOutput = getTestPayment();
+        testPayment = getTestPaymentOutput.payment;
+
+        testPayment.status = PaymentStatusEnum.CANCELLED;
+
+        paymentRepo = stubInterface<IPaymentRepo>({
+            findById: Promise.resolve(testPayment)
+        });
+
+        const paymentService = new PaymentService(paymentRepo);
+
+        const cancelPaymentResult = await paymentService.cancelPayment({ paymentId : testPayment.id });
+
+        if (cancelPaymentResult.type !== 'PaymentAlreadyCancelledError') {
+            assert.fail();
+        } else {
+            assert.equal(cancelPaymentResult.paymentId, testPayment.id);
+        }
+    });
+
+    it('should return payment not found error', async () => {
+        paymentRepo = stubInterface<IPaymentRepo>({
+            findById: Promise.resolve(undefined)
+        });
+
+        const paymentService = new PaymentService(paymentRepo);
+
+        const approvePaymentResult = await paymentService.cancelPayment({ paymentId : testPayment.id });
+
+        if (approvePaymentResult.type !== 'PaymentNotFoundError') {
+            assert.fail();
+        }
+    });
+
+    it('should return payment cancelled success', async () => {
+        const getTestPaymentOutput = getTestPayment();
+        testPayment = getTestPaymentOutput.payment;
+
+        paymentRepo = stubInterface<IPaymentRepo>({
+            findById: Promise.resolve(testPayment),
+            update: Promise.resolve(true)
+        });
+
+        const paymentService = new PaymentService(paymentRepo);
+
+        const cancelPaymentResult = await paymentService.cancelPayment({ paymentId : testPayment.id });
+
+        if (cancelPaymentResult.type !== 'CancelPaymentSuccess') {
+            assert.fail();
+        }
+    });
+
 });
