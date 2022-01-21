@@ -9,6 +9,8 @@
     "start-dev": "npm run lint && tsc-watch --onSuccess \"node public/server.js\"",
     "seed": "npm run lint && npm run build && node public/database-seed.js",
     "test": "env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\" }' env-cmd -f ./.env-for-test mocha -r ts-node/register 'src/test/**/*.ts' || true",
+    "test-integration": "env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\" }' env-cmd -f ./.env-for-test mocha -r ts-node/register 'src/test/integration/**/*.ts' || true",
+    "test-unit": "env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\" }' env-cmd -f ./.env-for-test mocha -r ts-node/register 'src/test/unit/**/*.ts' || true",
     "lint": "gts lint",
     "vault-check-app-role": "node vault-tests/check-app-role.js",
     "clean": "gts clean",

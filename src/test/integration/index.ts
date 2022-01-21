@@ -226,16 +226,23 @@ describe('Payments API Integration Tests', () => {
         })
 
         it('when user provides expired token should return error', async () => {
-            const userExpiredJWTOutput = await getJWTService().getUserExpiredJWT({ username : aUserForTesting.username });
+            const userExpiredJWTResult = await getJWTService().getUserExpiredJWT({ username : aUserForTesting.username });
 
-            const res = await request(app)
-                .get(GET_PAYMENTS_ENDPOINT)
-                .set('Authorization', 'bearer ' + userExpiredJWTOutput.token);
-            assert.equal(res.statusCode, StatusCodes.UNAUTHORIZED);
+            assert.equal(userExpiredJWTResult.type, 'GetUserExpiredJWTSuccess');
+            if (userExpiredJWTResult.type !== 'GetUserExpiredJWTSuccess') {
+                assert.fail();
+            }
+            else {
+                const expiredToken = userExpiredJWTResult.token;
+                const res = await request(app)
+                    .get(GET_PAYMENTS_ENDPOINT)
+                    .set('Authorization', 'bearer ' + expiredToken);
+                assert.equal(res.statusCode, StatusCodes.UNAUTHORIZED);
 
-            const errorResponse : ErrorResponseObject = res.body;
-            assert.equal(errorResponse.code, ERROR_AUTH_TOKEN_EXPIRED_CODE);
-            assert.equal(errorResponse.message, ERROR_AUTH_TOKEN_EXPIRED_MESSAGE);
+                const errorResponse : ErrorResponseObject = res.body;
+                assert.equal(errorResponse.code, ERROR_AUTH_TOKEN_EXPIRED_CODE);
+                assert.equal(errorResponse.message, ERROR_AUTH_TOKEN_EXPIRED_MESSAGE);
+            }
         })
 
     })

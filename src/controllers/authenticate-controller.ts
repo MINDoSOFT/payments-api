@@ -19,10 +19,6 @@ import { UnauthorizedError } from 'express-jwt';
 import { TokenExpiredError } from 'jsonwebtoken';
 import { UserService } from '../services/user-service';
 import { JWTService } from '../services/jwt-service';
-import {
-  UserNotFoundError,
-  UserPasswordInvalidError
-} from '../errors/user-service-error';
 import { ErrorDetail } from '../pocos/error-response-object';
 
 export const MISSING_USERNAME_OR_PASSWORD_MESSAGE = 'Missing username or password';
@@ -60,36 +56,42 @@ export class AuthenticateController {
     }
 
     try {
-      await this.userService.validateUserPassword({
+      const validateUserPasswordResult = await this.userService.validateUserPassword({
         username: req.body.username,
         plainTextPassword: req.body.password
       });
 
-      const { token, expiresIn } = await this.jwtService.getUserJWT({
-        username: req.body.username
-      });
+      switch (validateUserPasswordResult.type) {
+        case 'ValidateUserPasswordSuccess': 
+          const getUserJWTResult = await this.jwtService.getUserJWT({
+            username: req.body.username
+          });
 
-      return res.status(StatusCodes.OK).json({
-        authToken: token,
-        expiresIn: expiresIn
-      });
-    } catch (error) {
-      if (
-        error instanceof UserNotFoundError ||
-        error instanceof UserPasswordInvalidError
-      ) {
-        const detail = new ErrorDetail(WRONG_USERNAME_OR_PASSWORD_MESSAGE);
+          if (getUserJWTResult.type !== 'GetUserJWTSuccess') {
+            return res.status(StatusCodes.INTERNAL_SERVER_ERROR)
+              .send('Unexpected error while authenticating user (in getting JWT)');
+          }
 
-        return res.status(StatusCodes.UNAUTHORIZED).json({
-          code: ERROR_VALIDATION_CODE,
-          message: ERROR_VALIDATION_MESSAGE,
-          details: [detail]
-        });
-      } else {
-        return res
-          .status(StatusCodes.INTERNAL_SERVER_ERROR)
-          .send(`Unhandled error while authenticating user:` + error);
+          return res.status(StatusCodes.OK).json({
+            authToken: getUserJWTResult.token,
+            expiresIn: getUserJWTResult.expiresIn
+          });
+        case 'UserPasswordInvalidError':
+          const detail = new ErrorDetail(WRONG_USERNAME_OR_PASSWORD_MESSAGE);
+
+          return res.status(StatusCodes.UNAUTHORIZED).json({
+            code: ERROR_VALIDATION_CODE,
+            message: ERROR_VALIDATION_MESSAGE,
+            details: [detail]
+          });
+        case 'UnexpectedError':
+          return res
+            .status(StatusCodes.INTERNAL_SERVER_ERROR)
+            .send('Unexpected error while authenticating user');
       }
+    } catch (error) {
+      return res.status(StatusCodes.INTERNAL_SERVER_ERROR)
+        .send('Unexpected error while authenticating user (in controller)');
     }
   };
 

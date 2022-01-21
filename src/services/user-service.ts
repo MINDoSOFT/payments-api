@@ -1,18 +1,65 @@
 import bcrypt = require('bcrypt');
-import {
-  UserNotFoundError,
-  UserPasswordInvalidError
-} from '../errors/user-service-error';
-import {
-  addUserForTestingInput,
-  addUserForTestingOutput,
-  getUserInput,
-  getUserOutput,
-  validateUserPasswordInput,
-  validateUserPasswordOutput
-} from '../interfaces/services/user-service-interface';
 import { IUserRepo } from '../repos/user-repo';
-import { CreateUserObject } from '../pocos/user-object';
+import { CreateUserObject, UserObject } from '../pocos/user-object';
+
+type GetUserInput = {
+  username: string;
+}
+
+type GetUserSuccess = {
+  type: 'GetUserSuccess';
+  user: UserObject;
+}
+
+type UserNotFoundError = {
+  type: 'UserNotFoundError';
+  message: string;
+}
+
+type UnexpectedError = {
+  type: 'UnexpectedError'
+}
+
+type ValidateUserPasswordInput = {
+  username: string;
+  plainTextPassword: string;
+}
+
+type ValidateUserPasswordSuccess = {
+  type:'ValidateUserPasswordSuccess'
+}
+
+type UserPasswordInvalidError = {
+  type: 'UserPasswordInvalidError';
+  message: string;
+}
+
+type AddUserForTestingInput = {
+  username: string;
+  plaintextPassword: string;
+}
+
+type AddUserForTestingSuccess = {
+  type: 'AddUserForTestingSuccess'
+}
+
+type UserAlreadyExistsError = {
+  type: 'UserAlreadyExistsError';
+  message: string;
+}
+
+
+export type GetUserResult = GetUserSuccess 
+  | UserNotFoundError 
+  | UnexpectedError;
+
+export type ValidateUserPasswordResult = ValidateUserPasswordSuccess 
+  | UserPasswordInvalidError 
+  | UnexpectedError;
+
+export type AddUserForTestingResult = AddUserForTestingSuccess 
+  | UserAlreadyExistsError 
+  | UnexpectedError;
 
 export class UserService {
   private userRepository: IUserRepo;
@@ -21,38 +68,77 @@ export class UserService {
     this.userRepository = userRepository;
   }
 
-  getUser = async (input: getUserInput): Promise<getUserOutput> => {
-    const user = await this.userRepository.findByUsername(input.username);
+  getUser = async (input: GetUserInput): Promise<GetUserResult> => {
+    try {
+      const user = await this.userRepository.findByUsername(input.username);
 
-    if (!user) throw new UserNotFoundError(input.username);
+      if (!user) {
+        return {
+          type: 'UserNotFoundError',
+          message: 'Could not find user with username: ' + input.username
+        }
+      };  
 
-    return { user };
+      return { 
+        type: 'GetUserSuccess', 
+        user: user
+      };
+    } catch (error) {
+      return {
+        type: 'UnexpectedError'
+      }
+    }
   };
 
   validateUserPassword = async (
-    input: validateUserPasswordInput
-  ): Promise<validateUserPasswordOutput> => {
-    const getUserOutput = await this.getUser({ username: input.username });
-    const user = getUserOutput.user;
+    input: ValidateUserPasswordInput
+  ): Promise<ValidateUserPasswordResult> => {
+    try {
+      const errorMessage = 'Password does not match with password for username: ' + input.username;
 
-    if (!bcrypt.compareSync(input.plainTextPassword, user.password))
-      throw new UserPasswordInvalidError(input.username);
+      const getUserResult = await this.getUser({ username: input.username });
+      if (getUserResult.type !== 'GetUserSuccess')
+        return {
+          type: 'UserPasswordInvalidError',
+          message: errorMessage
+        }
+      const user = getUserResult.user;
 
-    return { isValid: true };
+      if (!bcrypt.compareSync(input.plainTextPassword, user.password))
+        return {
+          type: 'UserPasswordInvalidError',
+          message: errorMessage
+        }
+
+      return { type: 'ValidateUserPasswordSuccess' }; 
+    } catch (error) {
+      return {
+        type: 'UnexpectedError'
+      }
+    }
   };
 
-  addUserForTesting = async (input : addUserForTestingInput): Promise<addUserForTestingOutput> => {
-    if (! await this.userRepository.findByUsername(input.username)) {
-      const userToCreate : CreateUserObject = {
-        username : input.username,
-        plaintextPassword : input.plaintextPassword
+  addUserForTesting = async (input : AddUserForTestingInput): Promise<AddUserForTestingResult> => {
+    try {
+      if (! await this.userRepository.findByUsername(input.username)) {
+        const userToCreate : CreateUserObject = {
+          username : input.username,
+          plaintextPassword : input.plaintextPassword
+        }
+        const user = await this.userRepository.create(userToCreate);
+        return {
+          type: 'AddUserForTestingSuccess'
+        }
+      } else {
+        return {
+          type: 'UserAlreadyExistsError',
+          message: `User: ${input.username} already exists.`
+        }
+      }      
+    } catch (error) {
+      return {
+        type: 'UnexpectedError'
       }
-      const user = await this.userRepository.create(userToCreate);
-      console.log(`Created user: ${user.username}.`);
-    } else {
-      console.log(`User: ${input.username} already exists.`);
     }
-
-    return { created : true };
   }
 }
